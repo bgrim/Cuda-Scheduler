@@ -93,7 +93,7 @@ int main(int argc, char **argv)
     //I should never leave that loop!!
     cudaError cuda_error = cudaDeviceSynchronize();
     if(cuda_error==cudaSuccess){
-        printf( "  Running the Scheduler was a success\n");
+        printf( "Final: Running the Scheduler was a success\n");
     }else{
         printf("CUDA Error: %s\n", cudaGetErrorString(cuda_error));
         return 1;

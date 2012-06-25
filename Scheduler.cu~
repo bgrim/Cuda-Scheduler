@@ -48,7 +48,7 @@ void printAnyErrors(){
 int main(int argc, char **argv)
 {
     //Default values
-    int throttle = 1;  //this should be set using device properties
+    int throttle = 8;  //this should be set using device properties
 
     int cuda_device = 0; //Default, a better version would utilize every cuda
                          // enabled device and schedule across all of them

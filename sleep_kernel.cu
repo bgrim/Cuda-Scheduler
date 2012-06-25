@@ -21,6 +21,14 @@ void *sleep(void *str){
     cudaGetDevice(&cuda_device);	
     cudaGetDeviceProperties(&deviceProp, cuda_device);
     int clockRate = deviceProp.clockRate;
-    clock_block<<<1,1,1,stream>>>(kernel_time, clockRate); 
+
+    clock_block<<<1,1,1,stream>>>(kernel_time, clockRate);
+
+    cudaError_t cuda_error = cudaStreamSynchronize(stream);
+    if(cuda_error==cudaSuccess){
+        printf( "Running the Scheduler was a success\n");
+    }else{
+        printf("CUDA Error: %s\n", cudaGetErrorString(cuda_error));
+    }
     return 0;
 }

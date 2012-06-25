@@ -7,6 +7,8 @@
 #include <pthread.h>
 
 // set the default value of the kernel time to 1 second
+
+
 int kernel_time = 1000;
 
 ////////////////////////////////////////////////////////////////
@@ -25,7 +27,10 @@ void call(char *kernel, cudaStream_t stream)
                          // have more different kernels to call
     {
         pthread_t thread1;
-        pthread_create( &thread1, NULL, sleep, (void *) stream);
+        int rc = pthread_create( &thread1, NULL, sleep, (void *) stream);
+        if(rc){
+            printf("pthread had error and returned %d\n", rc);
+        }
     }
 }
 
@@ -43,7 +48,7 @@ void printAnyErrors(){
 int main(int argc, char **argv)
 {
     //Default values
-    int throttle = 2;  //this should be set using device properties
+    int throttle = 8;  //this should be set using device properties
 
     int cuda_device = 0; //Default, a better version would utilize every cuda
                          // enabled device and schedule across all of them

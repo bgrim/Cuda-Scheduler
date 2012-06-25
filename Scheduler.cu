@@ -51,7 +51,7 @@ int main(int argc, char **argv)
     int cuda_device = 0; //Default, a better version would utilize every cuda
                          // enabled device and schedule across all of them
 
-    if( argc>2 ){
+    if( argc>1 ){
         kernel_time = atoi(argv[1]);
     }
 

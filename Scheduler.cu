@@ -1,10 +1,10 @@
-
-
 //do some include stuff
 #include <stdio.h>
 #include <cuda_runtime.h>
 #include "matrixMul_kernel.cu"
 #include "sleep_kernel.cu"
+
+int kernel_time = 1000;
 
 ////////////////////////////////////////////////////////////////
 // Utilities
@@ -26,8 +26,8 @@ void call(char *kernel, cudaStream_t stream)
         cudaGetDeviceProperties(&deviceProp, cuda_device);
         int clockRate = deviceProp.clockRate;
 
-        clock_block<<<1,1,1,stream>>>(4000, clockRate);  
-                             //currently hard coded time
+        clock_block<<<1,1,1,stream>>>(kernel_time, clockRate);  
+        //currently hard coded time
     }
 }
 
@@ -38,8 +38,6 @@ void printAnyErrors(){
         printf("CUDA Error: %s\n", cudaGetErrorString( e ) );
     }
 }
-
-
 
 ////////////////////////////////////////////////////////////////////
 // The Main
@@ -54,7 +52,7 @@ int main(int argc, char **argv)
                          // enabled device and schedule across all of them
 
     if( argc>2 ){
-        throttle = atoi(argv[1]);
+        kernel_time = atoi(argv[1]);
     }
 
     //Getting device information, because we need clock_rate later

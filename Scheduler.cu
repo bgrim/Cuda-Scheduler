@@ -3,7 +3,9 @@
 #include <cuda_runtime.h>
 #include "matrixMul_kernel.cu"
 #include "sleep_kernel.cu"
+#include <pthread.h>
 
+// set the default value of the kernel time to 1 second
 int kernel_time = 1000;
 
 ////////////////////////////////////////////////////////////////
@@ -14,9 +16,21 @@ char* getNextKernel()
     return "sleep";
 }
 
-
 void call(char *kernel, cudaStream_t stream)
 {
+
+  // create a host thread.
+  pthread_t thread1, thread2;
+  char *message1 = "Thread 1";
+  char *message2 = "Thread 2";
+  int  iret1, iret2;
+
+  /* Create independent threads each of which will execute function */
+
+  iret1 = pthread_create( &thread1, NULL, print_message_function, (void*) message1);
+  iret2 = pthread_create( &thread2, NULL, print_message_function, (void*) message2);
+
+  // original code
     if(kernel=="sleep")  //This will eventually take better parameters and
                          // have more different kernels to call
     {
@@ -30,7 +44,6 @@ void call(char *kernel, cudaStream_t stream)
         //currently hard coded time
     }
 }
-
 
 void printAnyErrors(){
     cudaError e = cudaGetLastError();

@@ -3,58 +3,34 @@
 #include <cuda_runtime.h>
 #include "matrixMul_kernel.cu"
 #include "sleep_kernel.cu"
-//#include "queue.c"
-#include <pthread.h>
-
-// set the default value of the kernel time to 1 second
-
 
 int kernel_time = 1000;
 
 ////////////////////////////////////////////////////////////////
 // Utilities
 ////////////////////////////////////////////////////////////////
-
-void *waitOnStream( void *str )
-{
-    cudaStream_t stream = (cudaStream_t) str;
-    cudaError_t cuda_error = cudaStreamSynchronize(stream);
-    if(cuda_error==cudaSuccess){
-        printf( "Running the Scheduler was a success\n");
-    }else{
-        printf("CUDA Error: %s\n", cudaGetErrorString(cuda_error));
-    }
-    return 0;
-}
-
 char* getNextKernel()
 {
     return "sleep";
 }
 
+
 void call(char *kernel, cudaStream_t stream)
 {
-
-  // original code
     if(kernel=="sleep")  //This will eventually take better parameters and
                          // have more different kernels to call
     {
-        sleep(stream, kernel_time);
-
-        pthread_t thread1;
-        int rc = pthread_create( &thread1, NULL, waitOnStream, (void *) stream);
+        sleep(stream, kernel);
     }
 }
 
-void printAnyErrors()
-{
+
+void printAnyErrors(){
     cudaError e = cudaGetLastError();
     if(e!=cudaSuccess){
         printf("CUDA Error: %s\n", cudaGetErrorString( e ) );
     }
 }
-
-
 
 ////////////////////////////////////////////////////////////////////
 // The Main
@@ -63,7 +39,7 @@ void printAnyErrors()
 int main(int argc, char **argv)
 {
     //Default values
-    int throttle = 2;  //this should be set using device properties
+    int throttle = 16;  //this should be set using device properties
 
     int cuda_device = 0; //Default, a better version would utilize every cuda
                          // enabled device and schedule across all of them
@@ -88,7 +64,7 @@ int main(int argc, char **argv)
 
     printf("starting\n");
 
-    for(int k = 0; k<8; k++) //later will probably just be true.
+    for(int k = 0; k<64; k++) //later will probably just be true.
     {
         while( kernel == "none" ){
             kernel = getNextKernel();
@@ -108,7 +84,7 @@ int main(int argc, char **argv)
     //I should never leave that loop!!
     cudaError cuda_error = cudaDeviceSynchronize();
     if(cuda_error==cudaSuccess){
-        printf( "Final: Running the Scheduler was a success\n");
+        printf( "  Running the Scheduler was a success\n");
     }else{
         printf("CUDA Error: %s\n", cudaGetErrorString(cuda_error));
         return 1;

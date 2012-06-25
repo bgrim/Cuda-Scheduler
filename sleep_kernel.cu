@@ -21,5 +21,4 @@ void sleep(cudaStream_t stream, int kernel_time){
     int clockRate = deviceProp.clockRate;
 
     clock_block<<<1,1,1,stream>>>(kernel_time, clockRate);
-    //return 0;
 }

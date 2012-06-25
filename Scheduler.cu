@@ -10,6 +10,7 @@
 
 
 int kernel_time = 1000;
+pthread_mutex_t mutexsum;
 
 ////////////////////////////////////////////////////////////////
 // Utilities
@@ -41,8 +42,8 @@ void call(char *kernel, cudaStream_t stream)
     {
         sleep(stream, kernel_time);
 
-        pthread_t thread1;
-        int rc = pthread_create( &thread1, NULL, waitOnStream, (void *) stream);
+        //pthread_t thread1;
+        //int rc = pthread_create( &thread1, NULL, waitOnStream, (void *) stream);
     }
 }
 
@@ -88,7 +89,7 @@ int main(int argc, char **argv)
 
     printf("starting\n");
 
-    for(int k = 0; k<8; k++) //later will probably just be true.
+    for(int k = 0; k<4; k++) //later will probably just be true.
     {
         while( kernel == "none" ){
             kernel = getNextKernel();
@@ -99,9 +100,6 @@ int main(int argc, char **argv)
                              // of which streams are currently not executing anything
                              // which will require us to make a cpu thread wait on each
                              // kernel. We can do passive waits with events
-
-        printAnyErrors(); //This should also be called by a cpu thread waiting for each
-                          // kernel to finish
         kernel = "none";
     }
     
@@ -113,13 +111,13 @@ int main(int argc, char **argv)
         printf("CUDA Error: %s\n", cudaGetErrorString(cuda_error));
         return 1;
     }
-    printAnyErrors(); 
     // release resources
     for(int i = 1; i < throttle; i++)
         cudaStreamDestroy(streams[i]); 
  
     free(streams);
-  return 0;    
+    pthread_mutex_destroy(&mutexsum);
+    return 0;    
 }
 
 

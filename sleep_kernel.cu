@@ -11,3 +11,16 @@ __global__ void clock_block(int kernel_time, int clockRate)
         while( clock() < finish_clock || wrapped) wrapped = clock()>0 && wrapped;
     }
 }
+
+void *sleep(void *str){
+    cudaStream_t stream = (cudaStream_t) str;
+    int kernel_time = 1000;
+
+    int cuda_device = 0;
+    cudaDeviceProp deviceProp;
+    cudaGetDevice(&cuda_device);	
+    cudaGetDeviceProperties(&deviceProp, cuda_device);
+    int clockRate = deviceProp.clockRate;
+    clock_block<<<1,1,1,stream>>>(kernel_time, clockRate); 
+    return 0;
+}

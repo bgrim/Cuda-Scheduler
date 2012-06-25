@@ -3,6 +3,7 @@
 #include <cuda_runtime.h>
 #include "matrixMul_kernel.cu"
 #include "sleep_kernel.cu"
+//#include "queue.c"
 #include <pthread.h>
 
 // set the default value of the kernel time to 1 second
@@ -19,29 +20,12 @@ char* getNextKernel()
 void call(char *kernel, cudaStream_t stream)
 {
 
-  // create a host thread.
-  pthread_t thread1, thread2;
-  char *message1 = "Thread 1";
-  char *message2 = "Thread 2";
-  int  iret1, iret2;
-
-  /* Create independent threads each of which will execute function */
-
-  iret1 = pthread_create( &thread1, NULL, print_message_function, (void*) message1);
-  iret2 = pthread_create( &thread2, NULL, print_message_function, (void*) message2);
-
   // original code
     if(kernel=="sleep")  //This will eventually take better parameters and
                          // have more different kernels to call
     {
-        int cuda_device = 0;
-        cudaDeviceProp deviceProp;
-        cudaGetDevice(&cuda_device);	
-        cudaGetDeviceProperties(&deviceProp, cuda_device);
-        int clockRate = deviceProp.clockRate;
-
-        clock_block<<<1,1,1,stream>>>(kernel_time, clockRate);  
-        //currently hard coded time
+        pthread_t thread1;
+        pthread_create( &thread1, NULL, sleep, (void *) stream);
     }
 }
 
@@ -59,7 +43,7 @@ void printAnyErrors(){
 int main(int argc, char **argv)
 {
     //Default values
-    int throttle = 16;  //this should be set using device properties
+    int throttle = 2;  //this should be set using device properties
 
     int cuda_device = 0; //Default, a better version would utilize every cuda
                          // enabled device and schedule across all of them
@@ -84,7 +68,7 @@ int main(int argc, char **argv)
 
     printf("starting\n");
 
-    for(int k = 0; k<64; k++) //later will probably just be true.
+    for(int k = 0; k<16; k++) //later will probably just be true.
     {
         while( kernel == "none" ){
             kernel = getNextKernel();

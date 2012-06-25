@@ -64,7 +64,7 @@ void printAnyErrors()
 int main(int argc, char **argv)
 {
     //Default values
-    int throttle = 2;  //this should be set using device properties
+    int throttle = 16;  //this should be set using device properties
 
     int cuda_device = 0; //Default, a better version would utilize every cuda
                          // enabled device and schedule across all of them
@@ -89,7 +89,8 @@ int main(int argc, char **argv)
 
     printf("starting\n");
 
-    for(int k = 0; k<4; k++) //later will probably just be true.
+    int jobs = 64;
+    for(int k = 0; k<jobs; k++) //later will probably just be true.
     {
         while( kernel == "none" ){
             kernel = getNextKernel();
@@ -103,6 +104,11 @@ int main(int argc, char **argv)
         kernel = "none";
     }
     
+    // print out some default information                                                                                                                                                                  
+    printf("The number of jobs equals: %d\n",jobs);
+    printf("The current throttle is: %d\n", throttle);
+    int est = (jobs/throttle)*kernel_time;
+    printf("The estimated time should be: %d",est);
 
     cudaError cuda_error = cudaDeviceSynchronize();
     if(cuda_error==cudaSuccess){

@@ -49,6 +49,7 @@ int main(int argc, char **argv)
     int cuda_device = 0; //Default, a better version would utilize every cuda
                          // enabled device and schedule across all of them
 
+    // read in the arg for the kernel time if available
     if( argc>1 ){
         kernel_time = atoi(argv[1]);
     }
@@ -58,19 +59,21 @@ int main(int argc, char **argv)
     cudaGetDevice(&cuda_device);	
     cudaGetDeviceProperties(&deviceProp, cuda_device);
 
-
     // allocate and initialize an array of stream handles
     cudaStream_t *streams = (cudaStream_t*) malloc(throttle * sizeof(cudaStream_t));
     for(int i = 0; i < throttle; i++)
         cudaStreamCreate(&(streams[i]));
 
+    // set the default kernel to be equal to none
     char *kernel = "none";
     int i = 0;
 
     printf("starting\n");
 
+    // number of jobs to run
     int jobs = 64;
 
+    // loop through all of the jobs
     for(int k = 0; k<jobs; k++) //later will probably just be true.
     {
         while( kernel == "none" ){
@@ -88,9 +91,10 @@ int main(int argc, char **argv)
         kernel = "none";
     }
     
+
+    // print out some default information
     printf("The number of jobs equals: %d\n",jobs);
     printf("The current throttle is: %d\n", throttle);
-
     int est = (jobs/throttle)*kernel_time;
     printf("The estimated time should be: %d",est);
 

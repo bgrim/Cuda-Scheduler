@@ -3,25 +3,31 @@
 //do some include stuff
 #include <stdio.h>
 #include <cuda_runtime.h>
-#include <matrixMul_kernel.cu>
-#include <sleep_kernel.cu>
+#include "matrixMul_kernel.cu"
+#include "sleep_kernel.cu"
 
 ////////////////////////////////////////////////////////////////
 // Utilities
 ////////////////////////////////////////////////////////////////
+char* getNextKernel()
+{
+    return "sleep";
+}
+
 
 void call(char *kernel, cudaStream_t stream)
 {
     if(kernel=="sleep")  //This will eventually take better parameters and
                          // have more different kernels to call
     {
+        int cuda_device = 0;
         cudaDeviceProp deviceProp;
         cudaGetDevice(&cuda_device);	
         cudaGetDeviceProperties(&deviceProp, cuda_device);
         int clockRate = deviceProp.clockRate;
 
-        clock_block<<<1,1,1,stream>>>(1000, clockRate);  
-                             //currently hard coded to run for 1000ms
+        clock_block<<<1,1,1,stream>>>(4000, clockRate);  
+                             //currently hard coded time
     }
 }
 
@@ -62,11 +68,14 @@ int main(int argc, char **argv)
     for(int i = 0; i < throttle; i++)
         cudaStreamCreate(&(streams[i]));
 
-    char *kernel = "none" 
+    char *kernel = "none";
     int i = 0;
-    while(true)
+
+    printf("starting\n");
+
+    for(int k = 0; k<64; k++) //later will probably just be true.
     {
-        while( kernel = "none" ){
+        while( kernel == "none" ){
             kernel = getNextKernel();
         }
         call(kernel, streams[i]);
@@ -78,18 +87,24 @@ int main(int argc, char **argv)
 
         printAnyErrors(); //This should also be called by a cpu thread waiting for each
                           // kernel to finish
-        kernel = "none"
+        kernel = "none";
     }
-
+    
     //I should never leave that loop!!
-
+    cudaError cuda_error = cudaDeviceSynchronize();
+    if(cuda_error==cudaSuccess){
+        printf( "  Running the Scheduler was a success\n");
+    }else{
+        printf("CUDA Error: %s\n", cudaGetErrorString(cuda_error));
+        return 1;
+    }
     printAnyErrors(); 
     // release resources
-    for(int i = 1; i < nstreams; i++)
+    for(int i = 1; i < throttle; i++)
         cudaStreamDestroy(streams[i]); 
  
     free(streams);
-  return 1;    
+  return 0;    
 }
 
 

@@ -16,7 +16,7 @@
 
 int kernel_time = 1000;
 
-int startTime_ms;
+double startTime_ms;
 struct timeval tp;
 
 Queue Q;
@@ -66,7 +66,7 @@ void *waitOnStream( void *str )
     putStream(stream);
 
     if(cuda_error==cudaSuccess){
-        printf( "A thread has finished in  %.4f ms\n", getTime_msec() - startTime_ms);
+        printf( "A thread has finished in  %.1f ms\n", getTime_msec() - startTime_ms);
     }else{
         printf("CUDA Error: %s\n", cudaGetErrorString(cuda_error));
     }

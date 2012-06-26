@@ -53,23 +53,33 @@ cudaStream_t getStream()
 }
 
 void putStream(cudaStream_t stream){
-    pthread_mutex_lock(&queueLock);
-    Enqueue(stream, Q);
-    pthread_mutex_unlock(&queueLock);
+    bool waiting = true;
+    while(waiting)
+    {
+        pthread_mutex_lock(&queueLock);
+        waiting = IsFull(Q);
+        if(!waiting) Enqueue(stream, Q);
+        pthread_mutex_unlock(&queueLock);
+        if(waiting) pthread_yield();
+    }
 }
 
-void *waitOnStream( void *str )
+void *waitOnStream( void *arg )
 {
-    cudaStream_t stream = (cudaStream_t) str;
-    cudaError_t cuda_error = cudaStreamSynchronize(stream);
+    bool *done = (bool *) arg;              //Make this properly get both values from arg
+    cudaStream_t stream = (cudaStream_t) arg;
+
+
+
+    //while(cudaStreamQuery(stream)==cudaErrorNotReady)
+    
+    printf("waiting for kernel in thread at %.4f ms\n", getTime_msec() - startTime_ms); 
+    while(!(*done)) pthread_yield();
+    printf("    done waiting for kernel in thread at %.4f ms, getTime_msec() - startTime_ms);
     
     putStream(stream);
 
-    if(cuda_error==cudaSuccess){
-        printf( "A thread has finished in  %.4f ms\n", getTime_msec() - startTime_ms);
-    }else{
-        printf("CUDA Error: %s\n", cudaGetErrorString(cuda_error));
-    }
+    //printf( "A thread has finished in  %.4f ms\n", getTime_msec() - startTime_ms);
     return 0;
 }
 
@@ -82,11 +92,11 @@ void call(char *kernel)
 {
     if(kernel=="sleep")
     {
+        bool *done = false;
         cudaStream_t stream = getStream();
-        sleep(stream, kernel_time);
-
-        pthread_t thread1;
-        int rc = pthread_create( &thread1, NULL, waitOnStream, (void *) stream);
+        pthread_t worker, manager;
+        pthread_create( &worker, NULL, sleep, (void *)(stream, kernel_time, done) ); //need to make this record and update sleep
+        pthread_create( &manager, NULL, waitOnStream, (void *) (done, stream) );     //need to make this a record
     }
 }
 
@@ -114,7 +124,7 @@ int main(int argc, char **argv)
 
     int jobs = 64;
 
-    Q = CreateQueue(throttle);
+    Q = CreateQueue(2*throttle);
 
     if( argc>3 ){
         throttle = atoi(argv[1]);
@@ -160,7 +170,9 @@ int main(int argc, char **argv)
     }
     // release resources
     DisposeQueue(Q);
-
+    
+    for(int i=0; i<100000; i++);
+    
     pthread_mutex_destroy(&queueLock);
     return 0;    
 }

@@ -1,10 +1,10 @@
 /*
- *  FILE   : queue.c
- *  AUTHOR : Jeffrey Hunter
- *  WEB    : http://www.iDevelopment.info
- *  NOTES  : Implement all functions required
- *           for a Queue data structure.
- */
+* FILE : queue.c
+* AUTHOR : Jeffrey Hunter
+* WEB : http://www.iDevelopment.info
+* NOTES : Implement all functions required
+* for a Queue data structure.
+*/
 
 #include "queue.h"
 #include <stdlib.h>
@@ -34,12 +34,12 @@ Queue CreateQueue(int MaxElements) {
     Error("CreateQueue Error: Queue size is too small.");
   }
 
-  Q = malloc (sizeof(struct QueueRecord));
+  Q = (Queue) malloc (sizeof(struct QueueRecord));
   if (Q == NULL) {
     FatalError("CreateQueue Error: Unable to allocate more memory.");
   }
 
-  Q->Array = malloc( sizeof(ElementType) * MaxElements );
+  Q->Array = (ElementType *) malloc( sizeof(ElementType) * MaxElements );
   if (Q->Array == NULL) {
     FatalError("CreateQueue Error: Unable to allocate more memory.");
   }

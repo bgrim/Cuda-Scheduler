@@ -1,6 +1,7 @@
 //do some include stuff
 #include <stdio.h>
 #include <cuda_runtime.h>
+#include <sys/time.h>
 #include "matrixMul_kernel.cu"
 #include "sleep_kernel.cu"
 #include "queue.c"
@@ -9,7 +10,14 @@
 // set the default value of the kernel time to 1 second
 
 
+/////////////////////////////////////////////////////////////////
+// Global Variables
+/////////////////////////////////////////////////////////////////
+
 int kernel_time = 1000;
+
+double startTime_ms;
+struct timeval tp;
 
 Queue Q;
 pthread_mutex_t queueLock;
@@ -18,6 +26,12 @@ pthread_mutex_t queueLock;
 ////////////////////////////////////////////////////////////////
 // Utilities
 ////////////////////////////////////////////////////////////////
+
+double getTime_msec() {
+   gettimeofday(&tp, NULL);
+   return static_cast<double>(tp.tv_sec) * 1E3
+           + static_cast<double>(tp.tv_usec) / 1E3;
+}
 
 cudaStream_t getStream()
 {
@@ -52,7 +66,7 @@ void *waitOnStream( void *str )
     putStream(stream);
 
     if(cuda_error==cudaSuccess){
-        printf( "Running the Scheduler was a success\n");
+        printf( "A thread has finished in  %.4f ms\n", getTime_msec() - startTime_ms);
     }else{
         printf("CUDA Error: %s\n", cudaGetErrorString(cuda_error));
     }
@@ -92,14 +106,12 @@ void printAnyErrors()
 
 int main(int argc, char **argv)
 {
+    startTime_ms = getTime_msec();
 
     pthread_mutex_init(&queueLock, NULL);
 
-    //Default values
     int throttle = 16;  //this should be set using device properties
 
-    int cuda_device = 0; //Default, a better version would utilize every cuda
-                         // enabled device and schedule across all of them
     int jobs = 64;
 
     Q = CreateQueue(throttle);
@@ -109,12 +121,6 @@ int main(int argc, char **argv)
         jobs = atoi(argv[2]);
         kernel_time = atoi(argv[3]);
     }
-
-    //Getting device information, because we need clock_rate later
-    cudaDeviceProp deviceProp;
-    cudaGetDevice(&cuda_device);	
-    cudaGetDeviceProperties(&deviceProp, cuda_device);
-
 
     // allocate and initialize an array of stream handles
     //cudaStream_t *streams = (cudaStream_t*) malloc(throttle * sizeof(cudaStream_t));

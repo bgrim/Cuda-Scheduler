@@ -37,33 +37,35 @@ double getTime_msec() {
            + static_cast<double>(tp.tv_usec) / 1E3;
 }
 
-cudaStream_t getStream()
+record getStream()
 {
     bool waiting = true;
-    cudaStream_t stream;
+    record r;
+    //cudaStream_t stream;
     while(waiting)
     {
         pthread_mutex_lock(&queueLock);
         waiting = IsEmpty(Q);
         if(!waiting)
         {
-            stream = Front(Q);
+	  //stream = Front(Q);
+	    r = Front(Q);
             Dequeue(Q);
         }
         pthread_mutex_unlock(&queueLock);
         if(waiting) pthread_yield();
     }
-    return stream;
+    return r;
 }
 
-void putStream(cudaStream_t stream){
+void putStream(record r){
     //bool waiting = true;
     //while(waiting)
     //{
         pthread_mutex_lock(&queueLock);
         //waiting = IsFull(Q);
         //if(!waiting) Enqueue(stream, Q);
-        Enqueue(stream, Q);    //extra line
+        Enqueue(r, Q);    //extra line
         pthread_mutex_unlock(&queueLock);
         //if(waiting) pthread_yield();
     //}
@@ -71,7 +73,8 @@ void putStream(cudaStream_t stream){
 
 void *waitOnStream( void *arg )
 {
-    cudaStream_t stream = (cudaStream_t) arg;
+  //    cudaStream_t stream = (cudaStream_t) arg;
+    record r = (record) arg;
 
     double startTime_ms = getTime_msec();
 
@@ -81,11 +84,11 @@ void *waitOnStream( void *arg )
     // cudaEventSynchronize(event);
     // cudaEventDestroy(event);
     
-    //    cudaStreamSynchronize(stream);
-
+    cudaStreamSynchronize(r.stream);
+    print("The stream index is:%d \n", r.index);
     //    printf(" done waiting for kernel in %.4f ms\n",getTime_msec() - startTime_ms);
 
-    putStream(stream);
+    putStream(r);
 
     return 0;
 }
@@ -99,10 +102,10 @@ void call(char *kernel)
 {
     if(kernel=="sleep")
     {
-        cudaStream_t stream = getStream();
+        record r = getStream();
         pthread_t manager;
-        sleep(stream, kernel_time);
-        pthread_create( &manager, NULL, waitOnStream, (void *) stream);
+        sleep(r.stream, kernel_time);
+        pthread_create( &manager, NULL, waitOnStream, (void *) r);
     }
 }
 
@@ -139,7 +142,7 @@ int main(int argc, char **argv)
     cudaStream_t *streams = (cudaStream_t *) malloc(throttle*sizeof(cudaStream_t));
 
     // create record array
-    int recordArray[throttle];
+    record recordArray[throttle];
 
     for(int i = 0; i < throttle; i++)
     {
@@ -151,6 +154,7 @@ int main(int argc, char **argv)
       r.index = i;
       Enqueue(r, Q);
       // add to record array
+      recordArray[i] = r;
     }
 
     char *kernel = "none";

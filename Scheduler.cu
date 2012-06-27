@@ -18,10 +18,6 @@ int kernel_time = 1000;
 
 struct timeval tp;
 
-struct record{
-  cudaStream_t stream;
-  int index;
-};
 
 Queue Q;
 pthread_mutex_t queueLock;
@@ -85,7 +81,7 @@ void *waitOnStream( void *arg )
     // cudaEventDestroy(event);
     
     cudaStreamSynchronize(r.stream);
-    print("The stream index is:%d \n", r.index);
+    printf("The stream index is:%d \n", r.index);
     //    printf(" done waiting for kernel in %.4f ms\n",getTime_msec() - startTime_ms);
 
     putStream(r);
@@ -150,7 +146,7 @@ int main(int argc, char **argv)
       cudaStreamCreate(&streams[i]);
       // allocate the record
       record r = (record) malloc(throttle*sizeof(struct record));
-      r.stream = stream[i];
+      r.stream = streams[i];
       r.index = i;
       Enqueue(r, Q);
       // add to record array
@@ -190,6 +186,9 @@ int main(int argc, char **argv)
 
     // loop through record arry
     // free each element of the array
+    for(int i =0; i<throttle; i++) free(recordArray[i]);
+
+    free(recordArray);
 
     free(streams);
     DisposeQueue(Q);

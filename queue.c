@@ -92,8 +92,9 @@ ElementType Front(Queue Q) {
   Error("Front Error: The queue is empty.");
 
   /* Return value to avoid warnings from the compiler */
-  return 0;
-
+  //  return 0;
+  record r;
+  return r;
 }
 
 void Dequeue(Queue Q) {
@@ -109,7 +110,8 @@ void Dequeue(Queue Q) {
 
 ElementType FrontAndDequeue(Queue Q) {
 
-  ElementType X = 0;
+  //  ElementType X = 0;
+  ElementType X;
 
   if (IsEmpty(Q)) {
     Error("FrontAndDequeue Error: The queue is empty.");

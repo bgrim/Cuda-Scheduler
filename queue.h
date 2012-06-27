@@ -12,7 +12,13 @@
 #define Error(Str) FatalError(Str)
 #define FatalError(Str) fprintf(stderr, "%s\n", Str), exit(1)
 
-typedef cudaStream_t ElementType;
+struct record{
+  cudaStream_t stream;
+  int index;
+};
+
+//typedef cudaStream_t ElementType;
+typedef record ElementType;
 
 #ifndef _Queue_h
 

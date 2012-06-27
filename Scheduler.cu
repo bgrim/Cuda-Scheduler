@@ -18,6 +18,11 @@ int kernel_time = 1000;
 
 struct timeval tp;
 
+struct record{
+  cudaStream_t stream;
+  int index;
+};
+
 Queue Q;
 pthread_mutex_t queueLock;
 
@@ -70,13 +75,15 @@ void *waitOnStream( void *arg )
 
     double startTime_ms = getTime_msec();
 
-    cudaEvent_t event;
-    cudaEventCreate(&event); 
-    cudaEventRecord(event, stream);
-    cudaEventSynchronize(event);
-    cudaEventDestroy(event);
+    // cudaEvent_t event;
+    // cudaEventCreate(&event); 
+    // cudaEventRecord(event, stream);
+    // cudaEventSynchronize(event);
+    // cudaEventDestroy(event);
     
-    printf(" done waiting for kernel in %.4f ms\n",getTime_msec() - startTime_ms);
+    //    cudaStreamSynchronize(stream);
+
+    //    printf(" done waiting for kernel in %.4f ms\n",getTime_msec() - startTime_ms);
 
     putStream(stream);
 
@@ -127,14 +134,23 @@ int main(int argc, char **argv)
         throttle = atoi(argv[1]);
         jobs = atoi(argv[2]);
         kernel_time = atoi(argv[3]);
-    }
-    
+    }    
+
     cudaStream_t *streams = (cudaStream_t *) malloc(throttle*sizeof(cudaStream_t));
+
+    // create record array
+    int recordArray[throttle];
 
     for(int i = 0; i < throttle; i++)
     {
-        cudaStreamCreate(&streams[i]);
-        Enqueue(streams[i], Q);
+      // create a new record with the cuda stream create and the loop counter as the index
+      cudaStreamCreate(&streams[i]);
+      // allocate the record
+      record r = (record) malloc(throttle*sizeof(struct record));
+      r.stream = stream[i];
+      r.index = i;
+      Enqueue(r, Q);
+      // add to record array
     }
 
     char *kernel = "none";
@@ -167,6 +183,9 @@ int main(int argc, char **argv)
     // release resources
 
     for(int i =0; i<throttle; i++) cudaStreamDestroy(streams[i]);
+
+    // loop through record arry
+    // free each element of the array
 
     free(streams);
     DisposeQueue(Q);

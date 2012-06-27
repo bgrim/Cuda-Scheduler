@@ -52,28 +52,31 @@ cudaStream_t getStream()
 }
 
 void putStream(cudaStream_t stream){
-    bool waiting = true;
-    while(waiting)
-    {
+    //bool waiting = true;
+    //while(waiting)
+    //{
         pthread_mutex_lock(&queueLock);
-        waiting = IsFull(Q);
-        if(!waiting) Enqueue(stream, Q);
+        //waiting = IsFull(Q);
+        //if(!waiting) Enqueue(stream, Q);
+        Enqueue(stream, Q);    //extra line
         pthread_mutex_unlock(&queueLock);
-        if(waiting) pthread_yield();
-    }
+        //if(waiting) pthread_yield();
+    //}
 }
 
 void *waitOnStream( void *arg )
 {
     cudaStream_t stream = (cudaStream_t) arg;
 
-    double startTime_ms = getTime_msec(); 
-    cudaError_t e = cudaStreamSynchronize(stream);
-    printf(" done waiting for kernel in %.4f ms  with errorCode: %s\n",getTime_msec() - startTime_ms, cudaGetErrorString(e));
+    double startTime_ms = getTime_msec();
 
-   // if(e!=cudaSuccess){
-   //     printf("CUDA Error: %s\n", cudaGetErrorString( e ) );
-   // }
+    cudaEvent_t event;
+    cudaEventCreate(&event); 
+    cudaEventRecord(event, stream);
+    cudaEventSynchronize(event);
+    cudaEventDestroy(event);
+    
+    printf(" done waiting for kernel in %.4f ms\n",getTime_msec() - startTime_ms);
 
     putStream(stream);
 
@@ -118,7 +121,7 @@ int main(int argc, char **argv)
 
     int jobs = 64;
 
-    Q = CreateQueue(2*throttle);
+    Q = CreateQueue(throttle);
 
     if( argc>3 ){
         throttle = atoi(argv[1]);

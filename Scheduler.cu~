@@ -53,23 +53,31 @@ cudaStream_t getStream()
 }
 
 void putStream(cudaStream_t stream){
-    pthread_mutex_lock(&queueLock);
-    Enqueue(stream, Q);
-    pthread_mutex_unlock(&queueLock);
+    bool waiting = true;
+    while(waiting)
+    {
+        pthread_mutex_lock(&queueLock);
+        waiting = IsFull(Q);
+        if(!waiting) Enqueue(stream, Q);
+        pthread_mutex_unlock(&queueLock);
+        if(waiting) pthread_yield();
+    }
 }
 
-void *waitOnStream( void *str )
+void *waitOnStream( void *arg )
 {
-    cudaStream_t stream = (cudaStream_t) str;
-    cudaError_t cuda_error = cudaStreamSynchronize(stream);
+    cudaStream_t stream = (cudaStream_t) arg;
     
+    printf("waiting for kernel in thread at %.4f ms\n", getTime_msec() - startTime_ms); 
+    cudaError_t e = cudaStreamSynchronize(stream);
+    //printf("    done waiting for kernel in thread at %.4f ms\n", getTime_msec() - startTime_ms);
+
+    if(e!=cudaSuccess){
+        printf("CUDA Error: %s\n", cudaGetErrorString( e ) );
+    }
+
     putStream(stream);
 
-    if(cuda_error==cudaSuccess){
-        printf( "A thread has finished in  %.1f ms\n", getTime_msec() - startTime_ms);
-    }else{
-        printf("CUDA Error: %s\n", cudaGetErrorString(cuda_error));
-    }
     return 0;
 }
 
@@ -83,10 +91,9 @@ void call(char *kernel)
     if(kernel=="sleep")
     {
         cudaStream_t stream = getStream();
+        pthread_t manager;
         sleep(stream, kernel_time);
-
-        pthread_t thread1;
-        int rc = pthread_create( &thread1, NULL, waitOnStream, (void *) stream);
+        pthread_create( &manager, NULL, waitOnStream, (void *) stream);
     }
 }
 
@@ -114,16 +121,13 @@ int main(int argc, char **argv)
 
     int jobs = 64;
 
-    Q = CreateQueue(throttle);
+    Q = CreateQueue(2*throttle);
 
     if( argc>3 ){
         throttle = atoi(argv[1]);
         jobs = atoi(argv[2]);
         kernel_time = atoi(argv[3]);
     }
-
-    // allocate and initialize an array of stream handles
-    //cudaStream_t *streams = (cudaStream_t*) malloc(throttle * sizeof(cudaStream_t));
     
     for(int i = 0; i < throttle; i++)
     {
@@ -136,6 +140,11 @@ int main(int argc, char **argv)
 
     printf("starting\n");
 
+    printf("The number of jobs equals: %d\n",jobs);
+    printf("The current throttle is: %d\n", throttle);
+    int est = (jobs/throttle)*kernel_time;
+    printf("The estimated time should be: %d\n\n",est);
+
     for(int k = 0; k<jobs; k++) //later will probably just be true.
     {
         while( kernel == "none" ){
@@ -144,12 +153,8 @@ int main(int argc, char **argv)
         call(kernel);
         kernel = "none";
     }
+                                                                                                                                                        
     
-    // print out some default information                                                                                                                                                                  
-    printf("The number of jobs equals: %d\n",jobs);
-    printf("The current throttle is: %d\n", throttle);
-    int est = (jobs/throttle)*kernel_time;
-    printf("The estimated time should be: %d\n",est);
 
     cudaError cuda_error = cudaDeviceSynchronize();
     if(cuda_error==cudaSuccess){
@@ -160,7 +165,9 @@ int main(int argc, char **argv)
     }
     // release resources
     DisposeQueue(Q);
-
+    
+    for(int i=0; i<100000; i++);
+    
     pthread_mutex_destroy(&queueLock);
     return 0;    
 }

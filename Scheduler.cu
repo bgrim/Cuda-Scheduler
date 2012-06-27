@@ -16,7 +16,6 @@
 
 int kernel_time = 1000;
 
-double startTime_ms;
 struct timeval tp;
 
 Queue Q;
@@ -66,20 +65,18 @@ void putStream(cudaStream_t stream){
 
 void *waitOnStream( void *arg )
 {
-    bool *done = (bool *) arg;              //Make this properly get both values from arg
     cudaStream_t stream = (cudaStream_t) arg;
 
+    double startTime_ms = getTime_msec(); 
+    cudaError_t e = cudaStreamSynchronize(stream);
+    printf(" done waiting for kernel in %.4f ms  with errorCode: %s\n",getTime_msec() - startTime_ms, cudaGetErrorString(e));
 
+   // if(e!=cudaSuccess){
+   //     printf("CUDA Error: %s\n", cudaGetErrorString( e ) );
+   // }
 
-    //while(cudaStreamQuery(stream)==cudaErrorNotReady)
-    
-    printf("waiting for kernel in thread at %.4f ms\n", getTime_msec() - startTime_ms); 
-    while(!(*done)) pthread_yield();
-    printf("    done waiting for kernel in thread at %.4f ms, getTime_msec() - startTime_ms);
-    
     putStream(stream);
 
-    //printf( "A thread has finished in  %.4f ms\n", getTime_msec() - startTime_ms);
     return 0;
 }
 
@@ -92,11 +89,10 @@ void call(char *kernel)
 {
     if(kernel=="sleep")
     {
-        bool *done = false;
         cudaStream_t stream = getStream();
-        pthread_t worker, manager;
-        pthread_create( &worker, NULL, sleep, (void *)(stream, kernel_time, done) ); //need to make this record and update sleep
-        pthread_create( &manager, NULL, waitOnStream, (void *) (done, stream) );     //need to make this a record
+        pthread_t manager;
+        sleep(stream, kernel_time);
+        pthread_create( &manager, NULL, waitOnStream, (void *) stream);
     }
 }
 
@@ -116,8 +112,6 @@ void printAnyErrors()
 
 int main(int argc, char **argv)
 {
-    startTime_ms = getTime_msec();
-
     pthread_mutex_init(&queueLock, NULL);
 
     int throttle = 16;  //this should be set using device properties
@@ -131,20 +125,23 @@ int main(int argc, char **argv)
         jobs = atoi(argv[2]);
         kernel_time = atoi(argv[3]);
     }
-
-    // allocate and initialize an array of stream handles
-    //cudaStream_t *streams = (cudaStream_t*) malloc(throttle * sizeof(cudaStream_t));
     
+    cudaStream_t *streams = (cudaStream_t *) malloc(throttle*sizeof(cudaStream_t));
+
     for(int i = 0; i < throttle; i++)
     {
-        cudaStream_t s;
-        cudaStreamCreate(&s);
-        Enqueue(s, Q);
+        cudaStreamCreate(&streams[i]);
+        Enqueue(streams[i], Q);
     }
 
     char *kernel = "none";
 
     printf("starting\n");
+
+    printf("The number of jobs equals: %d\n",jobs);
+    printf("The current throttle is: %d\n", throttle);
+    int est = (jobs/throttle)*kernel_time;
+    printf("The estimated time should be: %d\n\n",est);
 
     for(int k = 0; k<jobs; k++) //later will probably just be true.
     {
@@ -154,12 +151,8 @@ int main(int argc, char **argv)
         call(kernel);
         kernel = "none";
     }
+                                                                                                                                                        
     
-    // print out some default information                                                                                                                                                                  
-    printf("The number of jobs equals: %d\n",jobs);
-    printf("The current throttle is: %d\n", throttle);
-    int est = (jobs/throttle)*kernel_time;
-    printf("The estimated time should be: %d\n",est);
 
     cudaError cuda_error = cudaDeviceSynchronize();
     if(cuda_error==cudaSuccess){
@@ -169,6 +162,10 @@ int main(int argc, char **argv)
         return 1;
     }
     // release resources
+
+    for(int i =0; i<throttle; i++) cudaStreamDestroy(streams[i]);
+
+    free(streams);
     DisposeQueue(Q);
     
     for(int i=0; i<100000; i++);

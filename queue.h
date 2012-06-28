@@ -18,7 +18,7 @@ struct record{
 };
 
 //typedef cudaStream_t ElementType;
-typedef record ElementType;
+typedef record* ElementType;
 
 #ifndef _Queue_h
 

@@ -93,7 +93,7 @@ ElementType Front(Queue Q) {
 
   /* Return value to avoid warnings from the compiler */
   //  return 0;
-  record r;
+  record *r;
   return r;
 }
 

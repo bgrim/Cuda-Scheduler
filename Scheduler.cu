@@ -33,10 +33,10 @@ double getTime_msec() {
            + static_cast<double>(tp.tv_usec) / 1E3;
 }
 
-record getStream()
+record* getStream()
 {
     bool waiting = true;
-    record r;
+    record *r;
     //cudaStream_t stream;
     while(waiting)
     {
@@ -54,7 +54,7 @@ record getStream()
     return r;
 }
 
-void putStream(record r){
+void putStream(record *r){
     //bool waiting = true;
     //while(waiting)
     //{
@@ -70,7 +70,7 @@ void putStream(record r){
 void *waitOnStream( void *arg )
 {
   //    cudaStream_t stream = (cudaStream_t) arg;
-    record r = (record) arg;
+    record *r = (record *) arg;
 
     double startTime_ms = getTime_msec();
 
@@ -80,8 +80,8 @@ void *waitOnStream( void *arg )
     // cudaEventSynchronize(event);
     // cudaEventDestroy(event);
     
-    cudaStreamSynchronize(r.stream);
-    printf("The stream index is:%d \n", r.index);
+    cudaStreamSynchronize(r->stream);
+    printf("The stream index is:%d \n", r->index);
     //    printf(" done waiting for kernel in %.4f ms\n",getTime_msec() - startTime_ms);
 
     putStream(r);
@@ -98,9 +98,9 @@ void call(char *kernel)
 {
     if(kernel=="sleep")
     {
-        record r = getStream();
+        record *r = getStream();
         pthread_t manager;
-        sleep(r.stream, kernel_time);
+        sleep(r->stream, kernel_time);
         pthread_create( &manager, NULL, waitOnStream, (void *) r);
     }
 }
@@ -138,18 +138,18 @@ int main(int argc, char **argv)
     cudaStream_t *streams = (cudaStream_t *) malloc(throttle*sizeof(cudaStream_t));
 
     // create record array
-    record recordArray[throttle];
+    record **recordArray = (record **) malloc(throttle*sizeof(record *));
+
 
     for(int i = 0; i < throttle; i++)
     {
       // create a new record with the cuda stream create and the loop counter as the index
       cudaStreamCreate(&streams[i]);
       // allocate the record
-      record r = (record) malloc(throttle*sizeof(struct record));
-      r.stream = streams[i];
-      r.index = i;
+      record *r = (record *) malloc (sizeof(struct record));
+      r->stream = streams[i];
+      r->index = i;
       Enqueue(r, Q);
-      // add to record array
       recordArray[i] = r;
     }
 
@@ -164,9 +164,10 @@ int main(int argc, char **argv)
 
     for(int k = 0; k<jobs; k++) //later will probably just be true.
     {
-        while( kernel == "none" ){
-            kernel = getNextKernel();
-        }
+        //while( kernel == "none" ){
+        //    kernel = getNextKernel();
+        //}
+        kernel = "sleep";
         call(kernel);
         kernel = "none";
     }
@@ -184,10 +185,11 @@ int main(int argc, char **argv)
 
     for(int i =0; i<throttle; i++) cudaStreamDestroy(streams[i]);
 
-    // loop through record arry
     // free each element of the array
-    for(int i =0; i<throttle; i++) free(recordArray[i]);
-
+    for(int i = 0; i<throttle; i++)
+    {
+        free(recordArray[i]);
+    }
     free(recordArray);
 
     free(streams);

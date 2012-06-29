@@ -18,6 +18,7 @@ int kernel_time = 1000;
 
 struct timeval tp;
 
+double startTime_ms;
 
 Queue Q;
 pthread_mutex_t queueLock;
@@ -72,17 +73,20 @@ void *waitOnStream( void *arg )
   //    cudaStream_t stream = (cudaStream_t) arg;
     record *r = (record *) arg;
 
-    double startTime_ms = getTime_msec();
-
     // cudaEvent_t event;
     // cudaEventCreate(&event); 
     // cudaEventRecord(event, stream);
     // cudaEventSynchronize(event);
     // cudaEventDestroy(event);
     
-    cudaStreamSynchronize(r->stream);
-    printf("The stream index is:%d \n", r->index);
-    //    printf(" done waiting for kernel in %.4f ms\n",getTime_msec() - startTime_ms);
+    //cudaStreamSynchronize(r->stream);
+
+    double time = getTime_msec();
+    while(cudaSuccess!=cudaStreamQuery(r->stream)){
+        //while(getTime_msec()<time+500);
+    }
+
+    printf(" done waiting for kernel at %.4f ms in stream: %d\n",getTime_msec() - startTime_ms, r->index);
 
     putStream(r);
 
@@ -99,6 +103,7 @@ void call(char *kernel)
     if(kernel=="sleep")
     {
         record *r = getStream();
+        printf("   main at time %.2f ms in stream: %d\n", getTime_msec()-startTime_ms, r->index);
         pthread_t manager;
         sleep(r->stream, kernel_time);
         pthread_create( &manager, NULL, waitOnStream, (void *) r);
@@ -121,6 +126,8 @@ void printAnyErrors()
 
 int main(int argc, char **argv)
 {
+    startTime_ms = getTime_msec();
+
     pthread_mutex_init(&queueLock, NULL);
 
     int throttle = 16;  //this should be set using device properties

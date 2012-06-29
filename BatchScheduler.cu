@@ -18,6 +18,7 @@ struct timeval tp;
 
 double startTime_ms;
 
+bool randomSleeps;
 
 ////////////////////////////////////////////////////////////////
 // Utilities
@@ -33,12 +34,20 @@ char* getNextKernel()
 {
     return "sleep";
 }
+int getKernelParam()
+{
+    if (randomSleeps)
+        return (int)(kernel_time*(rand()/(RAND_MAX+1.0)));
+    else
+        return kernel_time;
+}
 
-void call(char *kernel, cudaStream_t stream)
+
+void call(char *kernel, cudaStream_t stream, int param)
 {
     if(kernel=="sleep")
     {
-        sleep(stream, kernel_time);
+        sleep(stream, param);
     }
 }
 
@@ -64,11 +73,18 @@ int main(int argc, char **argv)
 
     int jobs = 64;
 
+    randomSleeps = false;
+
     if( argc>3 ){
         throttle = atoi(argv[1]);
         jobs = atoi(argv[2]);
         kernel_time = atoi(argv[3]);
-    }    
+    }
+    if( argc>4 )
+    {
+        randomSleeps = true;
+        srand(atoi(argv[4]));
+    }
 
     cudaStream_t *streams = (cudaStream_t *) malloc(throttle*sizeof(cudaStream_t));
 
@@ -81,18 +97,20 @@ int main(int argc, char **argv)
 
     printf("starting\n");
 
-    printf("The number of jobs equals: %d\n",jobs);
-    printf("The current throttle is: %d\n", throttle);
-    int est = (((jobs-1)/throttle)+1)*kernel_time;
-    printf("The estimated time should be: %d\n\n",est);
+    int totalTime = 0;
 
     for(int k = 0; k<jobs;) //later will probably just be true.
     {
         for(int j=0;j<throttle && k<jobs;j++){
+
+            int param;
+
             while( kernel == "none" ){
                 kernel = getNextKernel();
+                param = getKernelParam();
             }
-            call(kernel, streams[j]);
+            totalTime+=param;
+            call(kernel, streams[j], param);
             k++;
 
             kernel = "none";
@@ -101,6 +119,13 @@ int main(int argc, char **argv)
     }
 
     // release resources
+
+    printf("The number of jobs equals: %d\n",jobs);
+    printf("The current throttle is: %d\n", throttle);
+    printf("The total time slept is: %d\n", totalTime);
+    if(!randomSleeps)
+        printf("The estimated time is: %d\n\n", (((jobs-1)/throttle)+1)*kernel_time);
+
 
     for(int i =0; i<throttle; i++) cudaStreamDestroy(streams[i]);
 

@@ -1,7 +1,3 @@
-matrixMul(cudaStream_t s, int ** side_length, int* d_result){
-  cudaMatrixMul<32><<< grid, threads >>>(d_C, d_A, d_B, side_length, side_length);
-}
-
 template <int BLOCK_SIZE> __global__ void
 cudaMatrixMul( float* C, float* A, float* B, int wA, int wB)
 {
@@ -72,4 +68,8 @@ cudaMatrixMul( float* C, float* A, float* B, int wA, int wB)
     // each thread writes one element
     int c = wB * BLOCK_SIZE * by + BLOCK_SIZE * bx;
     C[c + wB * ty + tx] = Csub;
+}
+
+void matrixMul(cudaStream_t s, int** side_length, int* d_result){
+  cudaMatrixMul<32><<< grid, threads >>>(d_C, d_A, d_B, side_length, side_length);
 }

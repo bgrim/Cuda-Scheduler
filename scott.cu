@@ -14,8 +14,8 @@
 
 //int kernel_time = 1000;
 
-// default side lenth to 100
-int side_length = 100;
+// default side lenth to 2
+int side_length = 2;
 
 double startTime_ms;
 
@@ -88,7 +88,7 @@ void testRead(float* data, int side_length){
     printf("The item is: %f\n", data[i]);
   }
 }
-// Allocates a matrix with random float entries.                                                            
+// Allocates a matrix with specific float entries.                                                            
 void specificInit(float* data, int side_length)
 {  
   FILE * ftp;

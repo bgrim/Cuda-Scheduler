@@ -83,6 +83,13 @@ cudaMatrixMul( float* C, float* A, float* B, int wA, int wB)
     int c = wB * BLOCK_SIZE * by + BLOCK_SIZE * bx;
     C[c + wB * ty + tx] = Csub;
 }
+ // Allocates a matrix with random float entries.                                                                                            
+
+void randomInit(float* data, int size)
+{
+    for (int i = 0; i < size; ++i)
+      data[i] = rand() / (float)RAND_MAX;
+}
 
 void matrixMul(cudaStream_t s, int side_length, int* d_result){
 
@@ -152,7 +159,7 @@ void matrixMul(cudaStream_t s, int side_length, int* d_result){
   printf("Matrix C is :  %d x %d\n\n", uiWC, uiHC);
 
   // call the cudaMatrixMul cuda function
-  //  cudaMatrixMul<32><<< grid, threads >>>(d_C, d_A, d_B, side_length, side_length);
-  int hard_coded = 100;
-  cudaMatrixMul<32><<< grid, threads >>>(d_C, d_A, d_B, hard_coded, hard_coded);
+    cudaMatrixMul<32><<< grid, threads >>>(d_C, d_A, d_B, side_length, side_length);
+    //int hard_coded = 100;
+    //cudaMatrixMul<32><<< grid, threads >>>(d_C, d_A, d_B, hard_coded, hard_coded);
 }

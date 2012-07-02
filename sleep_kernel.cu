@@ -10,12 +10,12 @@ __global__ void clock_block(int kernel_time, int clockRate, int *d_result)
         bool wrapped = finish_clock < start_time;
         while( clock() < finish_clock || wrapped) wrapped = clock()>0 && wrapped;
     }
-    *d_result = kernel_time;
+    (*d_result)= kernel_time;
 }
 
 void sleep(cudaStream_t stream, int kernel_time, int *d_result){
 
-    int cuda_device = 0;
+    int cuda_device = 7;
     cudaDeviceProp deviceProp;
     cudaGetDevice(&cuda_device);	
     cudaGetDeviceProperties(&deviceProp, cuda_device);

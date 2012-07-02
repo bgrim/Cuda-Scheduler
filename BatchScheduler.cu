@@ -68,7 +68,7 @@ int main(int argc, char **argv)
 {
     startTime_ms = getTime_msec();
 
-    int throttle = 16;  //this should be set using device properties
+    int throttle = 16;  //this could be set using device properties
 
     int jobs = 64;
 
@@ -94,7 +94,8 @@ int main(int argc, char **argv)
     {
         int *results = (int *) malloc(throttle*sizeof(int));
 
-        int *d_results = (int *) malloc(throttle*sizeof(int));        
+        int *d_results;
+        cudaMalloc(&d_results, throttle*sizeof(int));     
 
         int jobsLaunched = 0; 
         for(int j=0;j<throttle && k<jobs;j++){
@@ -102,13 +103,13 @@ int main(int argc, char **argv)
             int *d_result = &d_results[j];
             void *param;
 
-            cudaMalloc(&d_result, sizeof(int) );
-
             while( kernel == "none" ){
                 kernel = getNextKernel();
                 param = getKernelParam();
             }
+
             call(kernel, streams[j], param, d_result);
+
             jobsLaunched++;
             k++;
 
@@ -117,18 +118,16 @@ int main(int argc, char **argv)
         }
 
         cudaError err = cudaDeviceSynchronize();
-        if(err!=cudaSuccess){
-            printf("CUDA Error: %s\n", cudaGetErrorString( err ) );
-        }
+        printf("finished a batch: %s\n", cudaGetErrorString( err ) );
 
         for(int j=0;j<jobsLaunched;j++){
+            //int *d_result = &d_results[j];
+
             cudaMemcpy(&(results[j]), &(d_results[j]), sizeof(int), cudaMemcpyDeviceToHost);
             printf("A job returned the value: %d\n", results[j]);
-            cudaFree(&d_results[j]);
         }
-
+        cudaFree(d_results);
         free(results);
-        free(d_results);
     }
 
     // release resources

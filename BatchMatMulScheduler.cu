@@ -17,7 +17,8 @@
 // default side lenth to 100
 int side_length = 100;
 
-struct timeval tp;
+// commenting out the tp because it is in the include
+//struct timeval tp;
 
 double startTime_ms;
 

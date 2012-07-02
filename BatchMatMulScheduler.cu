@@ -32,25 +32,29 @@ double getTime_msec() {
            + static_cast<double>(tp.tv_usec) / 1E3;
 }
 
-char* getNextKernel()
+int getNextKernel()
 {
-    return "matrix_multiply";
-}
-void *getKernelParam()
-{
-    return (void *) &side_length;
+  // for now always select mat mul
+    return 2;
 }
 
-
-void call(char *kernel, cudaStream_t stream, void *param, int *d_result)
+int getKernelParam()
 {
-    if(kernel=="sleep")
+    return side_length;
+}
+
+void call(int kernel, cudaStream_t stream, float* param, float* d_result)
+{
+  printf("I'm in call");
+    // sleep
+  //    if(kernel==1)
+  // {
+  //    sleep(stream, param, d_result);
+  //}
+    // mat mul
+    if(kernel==2)
     {
-        sleep(stream, *((int *) param), d_result);
-    }
-    if(kernel=="matrix_multiply")
-    {
-        matrixMul(stream, *((int *) param), d_result);
+      matrixMul(stream, side_length, param, d_result);
     }
 }
 
@@ -62,7 +66,12 @@ void printAnyErrors()
     }
 }
 
-
+// Allocates a matrix with random float entries.                                                            
+void randomInit(float* data, int size)
+{
+  for (int i = 0; i < size; ++i)
+    data[i] = rand() / (float)RAND_MAX;
+}
 
 ////////////////////////////////////////////////////////////////////
 // The Main
@@ -76,80 +85,100 @@ int main(int argc, char **argv)
 
     int jobs = 64;
 
-    /*
-    // get kernel_time if overridden on the command line                                                                                       
-    if (cutCheckCmdLineFlag(argc, (const char **)argv, "side_length")) {
-      cutGetCmdLineArgumenti(argc, (const char **)argv, "side_length", &side_length);
-    }
-    // get kernel_time if overridden on the command line                                                                                       
-    if (cutCheckCmdLineFlag(argc, (const char **)argv, "jobs")) {
-      cutGetCmdLineArgumenti(argc, (const char **)argv, "jobs", &jobs);
-    }
-    // get kernel_time if overridden on the command line                                                                                       
-    if (cutCheckCmdLineFlag(argc, (const char **)argv, "throttle")) {
-      cutGetCmdLineArgumenti(argc, (const char **)argv, "throttle", &throttle);
-    }
-    */
-
-    printf("The side_length is equal to: %d", side_length);
-
     if( argc>3 ){
         throttle = atoi(argv[1]);
         jobs = atoi(argv[2]);
-	// kernel_time = atoi(argv[3]);
 	side_length = atoi(argv[3]);
     }
+    
+    printf("The number of jobs is equal to: %d\n", jobs);
+    printf("The side_length is equal to: %d\n", side_length);
 
     cudaStream_t *streams = (cudaStream_t *) malloc(throttle*sizeof(cudaStream_t));
 
+    printf("create streams\n");
     for(int i = 0; i < throttle; i++)
     {
       cudaStreamCreate(&streams[i]);
     }
 
-    char *kernel = "none";
+    int kernel = 0;
 
     printf("starting\n");
 
-
+    // loop for number of batches
     for(int k = 0; k<jobs;) //later will probably just be true.
     {
-        int *results = (int *) malloc(throttle*sizeof(int));
-
-        int *d_results;
-        cudaMalloc(&d_results, throttle*sizeof(int));     
+      printf("made it into for loop\n");
 
         int jobsLaunched = 0; 
+
+	printf("make kernels\n");
+	// array for kernel
+	int *kernels = (int *) malloc(throttle*sizeof(int));
+	printf("make params\n");
+	// array for parameter
+	int *parameters = (int *) malloc(throttle*sizeof(int));
+
+	printf("reading jobs\n");
+	for(int q=0; q<throttle; q++){
+	  kernels[q] = getNextKernel();
+	  parameters[q] = getKernelParam();
+	}
+
+	// hard code all side lengths to be the same
+	side_length = parameters[0];
+
+	// host array A
+	float* h_arrayA = (float*)malloc(throttle*side_length*side_length*sizeof(float));
+
+	// device array A
+	float* d_arrayA;
+	cudaMalloc(&d_arrayA, throttle*side_length*side_length*sizeof(float));
+
+	// array C
+	float* h_results = (float*)malloc(throttle*side_length*side_length*sizeof(float));
+
+	// malloc on dev
+        float* d_results;
+        cudaMalloc(&d_results, throttle*side_length*side_length*sizeof(float));     
+
+	printf("build arrays\n");
+	// build arrays
+	for(int p=0; p<throttle; p++){
+	  // allocate matrix A
+	  printf("In loop: %d\n", p);
+	  randomInit(&h_arrayA[p], side_length*side_length);
+	}
+
+	printf("starting copy to device.\n");
+	// move to device
+	cudaMemcpy(d_arrayA, h_arrayA, throttle*side_length*side_length*sizeof(float), cudaMemcpyHostToDevice);
+
+	// loop over each batch
         for(int j=0;j<throttle && k<jobs;j++){
-
-            int *d_result = &d_results[j];
-            void *param;
-
-            while( kernel == "none" ){
-                kernel = getNextKernel();
-                param = getKernelParam();
-            }
-
-            call(kernel, streams[j], param, d_result);
+	  printf("Launching batch %d\n", j);
+            float* param = &d_arrayA[j];
+     
+            call(kernel, streams[j], param, &d_results[j]);
 
             jobsLaunched++;
             k++;
 
-            results[j]=1;
-            kernel = "none";
+            kernel = 0;
         }
 
         cudaError err = cudaDeviceSynchronize();
         printf("finished a batch: %s\n", cudaGetErrorString( err ) );
 
-        for(int j=0;j<jobsLaunched;j++){
-            //int *d_result = &d_results[j];
-
-            cudaMemcpy(&(results[j]), &(d_results[j]), sizeof(int), cudaMemcpyDeviceToHost);
-            printf("A job returned the value: %d\n", results[j]);
-        }
-        cudaFree(d_results);
-        free(results);
+	// write to host
+	cudaMemcpy(h_results, d_results, throttle*side_length*side_length*sizeof(float), cudaMemcpyDeviceToHost);
+	cudaFree(d_results);
+	cudaFree(d_arrayA);
+	free(kernels);
+	free(parameters);
+	free(h_arrayA);
+        free(h_results);
     }
 
     // release resources

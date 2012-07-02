@@ -85,81 +85,22 @@ cudaMatrixMul( float* C, float* A, float* B, int wA, int wB)
 }
  // Allocates a matrix with random float entries.                                                                                            
 
-void randomInit(float* data, int size)
-{
-    for (int i = 0; i < size; ++i)
-      data[i] = rand() / (float)RAND_MAX;
-}
 
-void matrixMul(cudaStream_t s, int side_length, int* d_result){
+void matrixMul(cudaStream_t s, int side_length, float* d_arrayA, float* d_result){
 
-  int cuda_device;
-  cudaDeviceProp deviceProp;
+  int size = side_length;
 
-  cudaGetDevice(&cuda_device);
-  cudaGetDeviceProperties(&deviceProp, cuda_device);
+  int block_size = 32;
 
-  // use a larger block size for Fermi and above                                                                                                                                                          
-  int block_size = (deviceProp.major < 2) ? 16 : 32;
-
-  //  printf("Device %d: \"%s\" with Compute %d.%d capability\n\n", cuda_device, deviceProp.name, deviceProp.major, deviceProp.minor);
-
-  // set seed for rand()                                                                                                                                                                              
-  srand(2006);
-
-  //Get command line arguements                                                                                                                                                                           
-  int nIter = 30;
-  int size = 640;
-
-  unsigned int uiWA, uiHA, uiWB, uiHB, uiWC, uiHC;
-  uiWA = size;
-  uiHA = size;
-  uiWB = size;
-  uiHB = size;
-  uiWC = size;
-  uiHC = size;
-
-  // allocate host memory for matrices A and B                                                                                                                                                            
-  unsigned int size_A = uiWA * uiHA;
-  unsigned int mem_size_A = sizeof(float) * size_A;
-  float* h_A = (float*)malloc(mem_size_A);
-  unsigned int size_B = uiWB * uiHB;
-  unsigned int mem_size_B = sizeof(float) * size_B;
-  float* h_B = (float*)malloc(mem_size_B);
-
-  unsigned int size_C = uiWC * uiHC;
-  unsigned int mem_size_C = sizeof(float) * size_C;
-
-  // initialize host memory                                                                                                                                                                               
-  randomInit(h_A, size_A);
-  randomInit(h_B, size_B);
-
-  // allocate host memory for the result                                                                                                                                                                  
-  float* h_C      = (float*) malloc(mem_size_C);
-
-  // allocate device memory                                                                                                                                                                               
-  float* d_A, *d_B, *d_C;
-
-  cudaMalloc((void**) &d_A, mem_size_A);
-  cudaMalloc((void**) &d_B, mem_size_B);
-  cudaMalloc((void**) &d_C, mem_size_C);
-
-  // copy host memory to device                                                                                                                                                                           
-  cudaMemcpy(d_A, h_A, mem_size_A, cudaMemcpyHostToDevice);
-  cudaMemcpy(d_B, h_B, mem_size_B, cudaMemcpyHostToDevice);
-
-  // setup execution parameters                                                                                                                                                                           
+  // setup execution parameters                                                           
   dim3 threads(block_size, block_size);
-  dim3 grid(uiWC / threads.x, uiHC / threads.y);
+  dim3 grid(side_length / threads.x, side_length / threads.y);
 
   //Print information about test                                                                                                                                                                          
-  printf("Calculating: C = A x B, %d times\n", nIter);
-  printf("Matrix A is :  %d x %d\n", uiWA, uiHA);
-  printf("Matrix B is :  %d x %d\n", uiWB, uiHB);
-  printf("Matrix C is :  %d x %d\n\n", uiWC, uiHC);
+  printf("Calculating: C = A x A where all sides equal: %d", side_length);
 
   // call the cudaMatrixMul cuda function
-    cudaMatrixMul<32><<< grid, threads >>>(d_C, d_A, d_B, side_length, side_length);
+    cudaMatrixMul<32><<< grid, threads >>>(d_result, d_arrayA, d_arrayA, side_length, side_length);
     //int hard_coded = 100;
     //cudaMatrixMul<32><<< grid, threads >>>(d_C, d_A, d_B, hard_coded, hard_coded);
 }

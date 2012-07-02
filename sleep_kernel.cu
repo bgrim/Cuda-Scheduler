@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-__global__ void clock_block(int kernel_time, int clockRate)
+__global__ void clock_block(int kernel_time, int clockRate, int *d_result)
 { 
     int finish_clock;
     int start_time;
@@ -10,9 +10,10 @@ __global__ void clock_block(int kernel_time, int clockRate)
         bool wrapped = finish_clock < start_time;
         while( clock() < finish_clock || wrapped) wrapped = clock()>0 && wrapped;
     }
+    *d_result = kernel_time;
 }
 
-void sleep(cudaStream_t stream, int kernel_time){
+void sleep(cudaStream_t stream, int kernel_time, int *d_result){
 
     int cuda_device = 0;
     cudaDeviceProp deviceProp;
@@ -20,5 +21,5 @@ void sleep(cudaStream_t stream, int kernel_time){
     cudaGetDeviceProperties(&deviceProp, cuda_device);
     int clockRate = deviceProp.clockRate;
 
-    clock_block<<<1,1,1,stream>>>(kernel_time, clockRate);
+    clock_block<<<1,1,1,stream>>>(kernel_time, clockRate, d_result);
 }

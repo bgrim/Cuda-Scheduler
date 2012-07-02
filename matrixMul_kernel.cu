@@ -1,5 +1,9 @@
+matrixMul(cudaStream_t s, int ** side_length, int* d_result){
+  cudaMatrixMul<32><<< grid, threads >>>(d_C, d_A, d_B, side_length, side_length);
+}
+
 template <int BLOCK_SIZE> __global__ void
-matrixMul( float* C, float* A, float* B, int wA, int wB)
+cudaMatrixMul( float* C, float* A, float* B, int wA, int wB)
 {
     // Block index
     int bx = blockIdx.x;

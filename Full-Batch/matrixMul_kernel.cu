@@ -7,6 +7,7 @@ void printDiff(float*, float*, int, int, int, float);
 bool check(float*, float*, int, float);
 void matMul_setup(cudaStream_t s, char *filename, void *matrixSetupResults);
 void specificInit(float* data, int side_length);
+void writeMatrixToFile(float* h_result, int side_length);
 
 struct matMulRecord{
   float* h_arrayA;
@@ -16,6 +17,21 @@ struct matMulRecord{
 }
 
 extern "C"
+
+void writeMatrixToFile(float* h_result, int side_length)
+{
+  FILE *matrix=fopen("matrixOut.txt", "w");
+  int size = side_length*side_length;
+
+  for(int i = 0; i<size; i++){
+    fprintf(matrix, "%lf\t", h_result[i]);
+    if((i+1)%side_length==0){
+      fprintf(matrix, "\n");
+    }
+  }
+  // close the file                                                                                                                                                                                       
+  fclose(matrix);
+}
 
 // Allocates a matrix with specific float entries.                                                                                                                                                        
 void specificInit(float* data, char* filename, int side_length)
@@ -28,6 +44,7 @@ void specificInit(float* data, char* filename, int side_length)
   for(int i = 0; i < size; i++){
     fscanf(ftp, "%f", &data[i]);
   }
+  fclose(ftp);
 }
 
 // matMul_Setup

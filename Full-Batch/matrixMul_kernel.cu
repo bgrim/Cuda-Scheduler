@@ -12,13 +12,13 @@ int getMatrixSideLengthFromFile(char* filename);
 //void matMul_finish(char *filename, void *setupResults);
 
 int getMatrixSideLengthFromFile(char* filename){
-  int c=0;
+  int c=1;
   char ch='\0';
   FILE* ftp;
   ftp=fopen(filename, "r");
-  while(ch!=EOF) {
+  while(ch!='\n') {
     ch=fgetc(ftp);
-    if(ch=='\n'){
+    if(ch=='\t'){
       c++;
     }
   }

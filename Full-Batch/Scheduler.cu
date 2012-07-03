@@ -137,18 +137,14 @@ int main(int argc, char **argv)
     // loop for number of batches
     for(int k = 0; k<jobs;) //later will probably just be true.
     {
-      //      printf("made it into for loop\n");
-
         int jobsLaunched = 0; 
 
-	//	printf("make kernels\n");
 	// array for kernel
 	int *kernels = (int *) malloc(throttle*sizeof(int));
-	//	printf("make params\n");
+
 	// array for parameter
 	int *parameters = (int *) malloc(throttle*sizeof(int));
 
-	//	printf("reading jobs\n");
 	for(int q=0; q<throttle; q++){
 	  kernels[q] = getNextKernel();
 	  parameters[q] = getKernelParam();
@@ -164,14 +160,13 @@ int main(int argc, char **argv)
 	float* d_arrayA;
 	cudaMalloc(&d_arrayA, throttle*side_length*side_length*sizeof(float));
 
-	// array C
+	// host results
 	float* h_results = (float*)malloc(throttle*side_length*side_length*sizeof(float));
 
-	// malloc on dev
+	// device results
         float* d_results;
         cudaMalloc(&d_results, throttle*side_length*side_length*sizeof(float));     
 
-	//	printf("build arrays\n");
 	// build arrays
 	for(int p=0; p<throttle; p++){
 	  // allocate matrix A

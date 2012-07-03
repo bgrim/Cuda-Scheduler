@@ -118,15 +118,15 @@ int main(int argc, char **argv)
         }
 
         cudaError err = cudaDeviceSynchronize();
-        //printf("finished a batch: %s\n", cudaGetErrorString( err ) );
+        printf("finished a batch: %s\n", cudaGetErrorString( err ) );
 
         for(int j=0;j<jobsLaunched;j++){
             //int *d_result = &d_results[j];
 
-            cudaMemcpy(&(results[j]), &(d_results[j]), sizeof(int), cudaMemcpyDeviceToHost);
-            //printf("A job returned the value: %d\n", results[j]);
+            printf("cudaMemcpy: %s\n", cudaGetErrorString( cudaMemcpy(&(results[j]), &(d_results[j]), sizeof(int), cudaMemcpyDeviceToHost)));
+            printf("A job returned the value: %d\n", results[j]);
         }
-        cudaFree(d_results);
+        printf("cudaFree: %s\n", cudaGetErrorString( cudaFree(d_results)));
         free(results);
     }
 

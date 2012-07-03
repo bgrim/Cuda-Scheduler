@@ -56,6 +56,7 @@ int getKernelParam()
 
 void call(int kernel, cudaStream_t stream, float* param, float* d_result)
 {
+    //printf("I'm in call");
     // sleep
   //    if(kernel==1)
   // {
@@ -64,7 +65,6 @@ void call(int kernel, cudaStream_t stream, float* param, float* d_result)
     // mat mul
     if(kernel==2)
     {
-      printf("I'm in call");
       matrixMul(stream, side_length, param, d_result);
     }
 }
@@ -186,7 +186,7 @@ int main(int argc, char **argv)
 
 	// loop over each batch
         for(int j=0;j<throttle && k<jobs;j++){
-	    printf("Launching batch %d\n", j);
+	    //printf("Launching batch %d\n", j);
             float* param = &d_arrayA[j*side_length*side_length];
 
             call(kernels[j], streams[j], param, &d_results[j*side_length*side_length]);

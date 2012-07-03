@@ -4,6 +4,7 @@
 #include <sys/time.h>
 #include "matrixMul_kernel.cu"
 #include "sleep_kernel.cu"
+#include "queue.c"
 
 // set the default value of the kernel time to 1 second
 
@@ -23,26 +24,24 @@ double getTime_msec() {
            + static_cast<double>(tp.tv_usec) / 1E3;
 }
 
+//Eventually getNextKernel(), getKernelInput() and getKernelOutput() will interact
+//  with a daemon that is listening for job information.
 int getNextKernel()
 {
-  // for now always select mat mul
     return 2;
 }
 char *getKernelInput()
 {
-    return "MatrixIn.txt";  //hardcoded will be fixed with daemon
+    return "MatrixIn.txt";
 }
 char *getKernelOutput(){
-    return "MatrixOut.txt"; //hardcoded will be fixed with daemon
+    return "MatrixOut.txt"; 
 }
 
-void kernel_call(int kernel, cudaStream_t stream, void *setupResults)
-{
-    if(kernel==1) sleep(stream, setupResults);
 
-    if(kernel==2) matrixMul(stream, setupResults);
-}
 
+//This method will let whatever kernel is about to run setup any device memory it needs
+//  and do any file I/O needed. All Asynchronous operations will be in stream
 void kernel_setup(int kernel, cudaStream_t stream, char * filename, void *setupResult)
 {
     if(kernel==1) sleep_setup(stream, filename, setupResult);
@@ -50,12 +49,24 @@ void kernel_setup(int kernel, cudaStream_t stream, char * filename, void *setupR
     if(kernel==2) matMul_setup(stream, filename, setupResult);
 }
 
+//This method will launch the given kernel in stream with setupResults.
+void kernel_call(int kernel, cudaStream_t stream, void *setupResults)
+{
+    if(kernel==1) sleep(stream, setupResults);
+
+    if(kernel==2) matrixMul(stream, setupResults);
+}
+
+//This method will let the kernel deallocate all the memory that it acquired in
+//  kernel_setup and also lets the kernel write to its output file.
 void kernel_finish(int kernel, char * filename, void *setupResult )
 {
     if(kernel==1) sleep_finish(filename, setupResult);
 
     if(kernel==2) matMul_finish(filename, setupResult);
 }
+
+
 
 void printAnyErrors()
 {
@@ -81,7 +92,7 @@ int main(int argc, char **argv)
         throttle = atoi(argv[1]);
         jobs = atoi(argv[2]);
     }
-    
+   
     printf("The number of jobs is equal to: %d\n", jobs);
 
     cudaStream_t *streams = (cudaStream_t *) malloc(throttle*sizeof(cudaStream_t));

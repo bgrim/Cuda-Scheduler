@@ -1,18 +1,16 @@
-//do some include stuff
 #include <stdio.h>
 #include <cuda_runtime.h>
 #include <sys/time.h>
 #include "matrixMul_kernel.cu"
 #include "sleep_kernel.cu"
-
-// set the default value of the kernel time to 1 second
-
+#include "queue.c"
 
 /////////////////////////////////////////////////////////////////
 // Global Variables
 /////////////////////////////////////////////////////////////////
 
-double startTime_ms;
+double startTime_ms;  //this is helpful for debugging sometimes
+                      //its vlue is the first thing set by the program
 
 ////////////////////////////////////////////////////////////////
 // Utilities
@@ -23,25 +21,24 @@ double getTime_msec() {
            + static_cast<double>(tp.tv_usec) / 1E3;
 }
 
+//Eventually getNextKernel(), getKernelInput() and getKernelOutput() will interact
+//  with a daemon that is listening for job information.
 int getNextKernel()
 {
-    return 2;  //hardcorded will be fixed with daemon
+    return 2;
 }
 char *getKernelInput()
 {
-    return "MatrixIn.txt";  //hardcoded will be fixed with daemon
+    return "MatrixIn.txt";
 }
 char *getKernelOutput(){
-    return "MatrixOut.txt"; //hardcoded will be fixed with daemon
+    return "MatrixOut.txt"; 
 }
 
-void kernel_call(int kernel, cudaStream_t stream, void *setupResults)
-{
-    if(kernel==1) sleep(stream, setupResults);
 
-    if(kernel==2) matrixMul(stream, setupResults);
-}
 
+//This method will let whatever kernel is about to run setup any device memory it needs
+//  and do any file I/O needed. All Asynchronous operations will be in stream
 void kernel_setup(int kernel, cudaStream_t stream, char * filename, void *setupResult)
 {
     if(kernel==1) sleep_setup(stream, filename, setupResult);
@@ -49,6 +46,16 @@ void kernel_setup(int kernel, cudaStream_t stream, char * filename, void *setupR
     if(kernel==2) matMul_setup(stream, filename, setupResult);
 }
 
+//This method will launch the given kernel in stream with setupResults.
+void kernel_call(int kernel, cudaStream_t stream, void *setupResults)
+{
+    if(kernel==1) sleep(stream, setupResults);
+
+    if(kernel==2) matrixMul(stream, setupResults);
+}
+
+//This method will let the kernel deallocate all the memory that it acquired in
+//  kernel_setup and also lets the kernel write to its output file.
 void kernel_finish(int kernel, char * filename, void *setupResult )
 {
     if(kernel==1) sleep_finish(filename, setupResult);
@@ -56,6 +63,9 @@ void kernel_finish(int kernel, char * filename, void *setupResult )
     if(kernel==2) matMul_finish(filename, setupResult);
 }
 
+
+//prints the most recent error that hasn't been printed before
+//does nothing if there are no errors
 void printAnyErrors()
 {
     cudaError e = cudaGetLastError();
@@ -72,19 +82,18 @@ int main(int argc, char **argv)
 {
     startTime_ms = getTime_msec();
 
-    int throttle = 16;  //this could be set using device properties
-
+    //sets the throttle and number of jobs based on inputs or defaults
+    int throttle = 16;
     int jobs = 64;
-
     if( argc>3 ){
         throttle = atoi(argv[1]);
         jobs = atoi(argv[2]);
     }
-    
+   
     printf("The number of jobs is equal to: %d\n", jobs);
 
+    //make throttle many streams to run concurrent kernels in
     cudaStream_t *streams = (cudaStream_t *) malloc(throttle*sizeof(cudaStream_t));
-
     for(int i = 0; i < throttle; i++)
 	cudaStreamCreate(&streams[i]);
 
@@ -92,7 +101,7 @@ int main(int argc, char **argv)
     // loop for number of batches
     for(int k = 0; k<jobs;)
     {
-        int batchSize = 0; 
+        int batchSize = 0; //this will be throttle or less if we run out of jobs
 
 	// arrays for kernel type and its input/output files
 	int *kernels = (int *) malloc(throttle*sizeof(int));
@@ -151,3 +160,10 @@ int main(int argc, char **argv)
 
     return 0;    
 }
+
+
+
+
+
+
+

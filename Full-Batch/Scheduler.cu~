@@ -44,6 +44,8 @@ void *kernel_setup(int kernel, cudaStream_t stream, char * filename)
     if(kernel==1) return sleep_setup(stream, filename);
 
     if(kernel==2) return matMul_setup(stream, filename);
+
+    return (void *) 1;
 }
 
 //This method will launch the given kernel in stream with setupResults.

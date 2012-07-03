@@ -12,7 +12,7 @@ int getMatrixSideLengthFromFile(char* filename);
 //void matMul_finish(char *filename, void *setupResults);
 
 int getMatrixSideLengthFromFile(char* filename){
-  int c=1;
+  int c=0;
   char ch='\0';
   FILE* ftp;
   ftp=fopen(filename, "r");
@@ -69,9 +69,10 @@ void writeMatrixToFile(char *filename, float* h_result, int side_length)
 
   printf("starting loop, and size = %d\n", size);
   for(int i = 0; i<size; i++){
-    fprintf(matrix, "%lf\t", h_result[i]);
+    fprintf(matrix, "%f\t", h_result[i]);
     if((i+1)%side_length==0){
       fprintf(matrix, "\n");
+      //printf("ending the %dth row and the last element is %d\n", i/side_length, i);
     }
   }
   printf("stopping loop\n");
@@ -97,7 +98,6 @@ void *matMul_setup(cudaStream_t s, char* filename){
 
   // get side length of file
   // faster for get lines in file or from single line
-  int side_length = 32;
   int side_length = getMatrixSideLengthFromFile(filename);
 
   // host array A (the matrix to be squared)                                                                                                                                                            
@@ -215,7 +215,7 @@ void matrixMul(cudaStream_t s, void *setupResults){
   // setup execution parameters                                                           
   dim3 threads(block_size, block_size);
   dim3 grid(side_length / threads.x, side_length / threads.y);
-                                                                                                                                                                        
+
   // call the cudaMatrixMul cuda function
   cudaMatrixMul<32><<< grid, threads, 0, s>>>(d_results, d_arrayA, d_arrayA, side_length, side_length);
 }

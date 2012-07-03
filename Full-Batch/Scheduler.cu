@@ -87,7 +87,7 @@ int main(int argc, char **argv)
     //sets the throttle and number of jobs based on inputs or defaults
     int throttle = 16;
     int jobs = 64;
-    if( argc>3 ){
+    if( argc>2 ){
         throttle = atoi(argv[1]);
         jobs = atoi(argv[2]);
     }

@@ -8,7 +8,22 @@ bool check(float*, float*, int, float);
 void matMul_setup(cudaStream_t s, char *filename, void *matrixSetupResults);
 void specificInit(float* data, int side_length);
 void writeMatrixToFile(char *filename, float* h_result, int side_length);
+int getMatrixSideLengthFromFile(char* filename);
 //void matMul_finish(char *filename, void *setupResults);
+
+int getMatrixSideLengthFromFile(char* filename){
+  int c=0;
+  char ch='\0';
+  FILE* ftp;
+  ftp=fopen(filename, "r");
+  while(ch!=EOF) {
+    ch=fgetc(ftp);
+    if(ch=='\n'){
+      c++;
+    }
+  }
+  return c;
+}
 
 struct matMulRecord{
   float* h_arrayA;
@@ -83,6 +98,7 @@ void *matMul_setup(cudaStream_t s, char* filename){
   // get side length of file
   // faster for get lines in file or from single line
   int side_length = 32;
+  int side_length = getMatrixSideLengthFromFile(filename);
 
   // host array A (the matrix to be squared)                                                                                                                                                            
   float* h_arrayA = (float*)malloc(side_length*side_length*sizeof(float));

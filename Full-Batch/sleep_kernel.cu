@@ -13,13 +13,47 @@ __global__ void clock_block(int kernel_time, int clockRate, int *d_result)
     (*d_result)= kernel_time;
 }
 
-void sleep(cudaStream_t stream, int kernel_time, int *d_result){
+void sleep_setup(cudaStream_t stream, char *filename, void *setupResult)
+{
+    //open file
+    FILE * ftp;
+    ftp = fopen(filename,"r");
 
-    int cuda_device = 7;
+    // read the kernel_time from the file
+    int kernel_time;
+    fscanf(ftp, "%d", &kernel_time);
+
+    // set the value of setupResult to the address of kernel_time
+    setupResult = (void *) &kernel_time;
+
+    fclose(ftp);
+}
+
+void sleep(cudaStream_t stream, void *setupResult)
+{
+    int *kernel_time = (int *) setupResult
+    int cuda_device = 0;
     cudaDeviceProp deviceProp;
     cudaGetDevice(&cuda_device);	
     cudaGetDeviceProperties(&deviceProp, cuda_device);
     int clockRate = deviceProp.clockRate;
 
-    clock_block<<<1,1,1,stream>>>(kernel_time, clockRate, d_result);
+    clock_block<<<1,1,1,stream>>>(*kernel_time, clockRate, d_result);
 }
+
+void sleep_finish(char *filename, void *setupResult)
+{
+    int *kernel_time = (int *)setupResult;
+    FILE *out=fopen("matrixOut.txt", "w");
+
+    fprintf(out, "Finished sleep of duration: %d", *kernel_time);
+
+    fclose(out);
+}
+
+
+
+
+
+
+

@@ -25,8 +25,7 @@ double getTime_msec() {
 
 int getNextKernel()
 {
-  // for now always select mat mul
-    return 2;
+    return 2;  //hardcorded will be fixed with daemon
 }
 char *getKernelInput()
 {
@@ -77,16 +76,12 @@ int main(int argc, char **argv)
 
     int jobs = 64;
 
-    int side_length = 100;
-
     if( argc>3 ){
         throttle = atoi(argv[1]);
         jobs = atoi(argv[2]);
-	side_length = atoi(argv[3]);
     }
     
     printf("The number of jobs is equal to: %d\n", jobs);
-    printf("The side_length is equal to: %d\n", side_length);
 
     cudaStream_t *streams = (cudaStream_t *) malloc(throttle*sizeof(cudaStream_t));
 

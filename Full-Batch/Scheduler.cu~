@@ -12,31 +12,11 @@
 // Global Variables
 /////////////////////////////////////////////////////////////////
 
-//int kernel_time = 1000;
-
-// default side lenth to 2
-int side_length = 2;
-
 double startTime_ms;
 
 ////////////////////////////////////////////////////////////////
 // Utilities
 ////////////////////////////////////////////////////////////////
-void writeMatrixToFile(float* h_result, int side_length)
-{
-  FILE *matrix=fopen("matrixOut.txt", "w");
-  int size = side_length*side_length;
-
-  for(int i = 0; i<size; i++){
-    fprintf(matrix, "%lf\t", h_result[i]);
-    if((i+1)%side_length==0){
-      fprintf(matrix, "\n");
-    }
-  }
-  // close the file
-  fclose(matrix);
-}
-
 double getTime_msec() {
    gettimeofday(&tp, NULL);
    return static_cast<double>(tp.tv_sec) * 1E3
@@ -48,25 +28,33 @@ int getNextKernel()
   // for now always select mat mul
     return 2;
 }
-
-int getKernelParam()
+char *getKernelInput()
 {
-    return side_length;
+    return "MatrixIn.txt";  //hardcoded will be fixed with daemon
+}
+char *getKernelOutput(){
+    return "MatrixOut.txt"; //hardcoded will be fixed with daemon
 }
 
-void call(int kernel, cudaStream_t stream, float* param, float* d_result)
+void kernel_call(int kernel, cudaStream_t stream, void *setupResults)
 {
-    //printf("I'm in call");
-    // sleep
-  //    if(kernel==1)
-  // {
-  //    sleep(stream, param, d_result);
-  //}
-    // mat mul
-    if(kernel==2)
-    {
-      matrixMul(stream, side_length, param, d_result);
-    }
+    if(kernel==1) sleep(stream, setupResults);
+
+    if(kernel==2) matrixMul(stream, setupResults);
+}
+
+void kernel_setup(int kernel, cudaStream_t stream, char * filename, void *setupResult)
+{
+    if(kernel==1) sleep_setup(stream, filename, setupResult);
+
+    if(kernel==2) matMul_setup(stream, filename, setupResult);
+}
+
+void kernel_finish(int kernel, char * filename, void *setupResult )
+{
+    if(kernel==1) sleep_finish(filename, setupResult);
+
+    if(kernel==2) matMul_finish(filename, setupResult);
 }
 
 void printAnyErrors()
@@ -75,32 +63,6 @@ void printAnyErrors()
     if(e!=cudaSuccess){
         printf("CUDA Error: %s\n", cudaGetErrorString( e ) );
     }
-}
-
-// Allocates a matrix with random float entries.                                                            
-void randomInit(float* data, int size)
-{
-  for (int i = 0; i < size; ++i)
-    data[i] = rand() / (float)RAND_MAX;
-}
-void testRead(float* data, int side_length){
-  for(int i = 0; i < side_length*side_length;i++){
-    printf("The item is: %f\n", data[i]);
-  }
-}
-// Allocates a matrix with specific float entries.                                                            
-void specificInit(float* data, int side_length)
-{  
-  FILE * ftp;
-  ftp = fopen("matrix.txt","r");
-  int size = side_length*side_length;
-
-  for(int i = 0; i < size; i++){
-      fscanf(ftp, "%f", &data[i]);
-  }
-  //printf("matrix: %f   %f\n", data[0], data[1]);
-  //printf("        %f   %f\n", data[2], data[3]);
-  //  testRead(data, side_length);
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -118,98 +80,62 @@ int main(int argc, char **argv)
     if( argc>3 ){
         throttle = atoi(argv[1]);
         jobs = atoi(argv[2]);
-	side_length = atoi(argv[3]);
     }
     
     printf("The number of jobs is equal to: %d\n", jobs);
-    printf("The side_length is equal to: %d\n", side_length);
 
     cudaStream_t *streams = (cudaStream_t *) malloc(throttle*sizeof(cudaStream_t));
 
-    //printf("create streams\n");
     for(int i = 0; i < throttle; i++)
-    {
-      cudaStreamCreate(&streams[i]);
-    }
+	cudaStreamCreate(&streams[i]);
 
-    //    printf("starting\n");
 
     // loop for number of batches
-    for(int k = 0; k<jobs;) //later will probably just be true.
+    for(int k = 0; k<jobs;)
     {
-      //      printf("made it into for loop\n");
+        int batchSize = 0; 
 
-        int jobsLaunched = 0; 
-
-	//	printf("make kernels\n");
-	// array for kernel
+	// arrays for kernel type and its input/output files
 	int *kernels = (int *) malloc(throttle*sizeof(int));
-	//	printf("make params\n");
-	// array for parameter
-	int *parameters = (int *) malloc(throttle*sizeof(int));
+	char **inputFiles = (char **) malloc(throttle*sizeof(char *));
+	char **outputFiles = (char **) malloc(throttle*sizeof(char *));
 
-	//	printf("reading jobs\n");
-	for(int q=0; q<throttle; q++){
-	  kernels[q] = getNextKernel();
-	  parameters[q] = getKernelParam();
-	}
-
-	// hard code all side lengths to be the same
-	side_length = parameters[0];
-
-	// host array A
-	float* h_arrayA = (float*)malloc(throttle*side_length*side_length*sizeof(float));
-
-	// device array A
-	float* d_arrayA;
-	cudaMalloc(&d_arrayA, throttle*side_length*side_length*sizeof(float));
-
-	// array C
-	float* h_results = (float*)malloc(throttle*side_length*side_length*sizeof(float));
-
-	// malloc on dev
-        float* d_results;
-        cudaMalloc(&d_results, throttle*side_length*side_length*sizeof(float));     
-
-	//	printf("build arrays\n");
-	// build arrays
-	for(int p=0; p<throttle; p++){
-	  // allocate matrix A
-	  //	  printf("In loop: %d\n", p);
-	  //	  randomInit(&h_arrayA[p], side_length*side_length);
-	  specificInit(&h_arrayA[p*side_length*side_length], side_length);
-	}
-
-	//	printf("starting copy to device.\n");
-	// move to device
-	cudaMemcpy(d_arrayA, h_arrayA, throttle*side_length*side_length*sizeof(float), cudaMemcpyHostToDevice);
-
-	// loop over each batch
-        for(int j=0;j<throttle && k<jobs;j++){
-	    //printf("Launching batch %d\n", j);
-            float* param = &d_arrayA[j*side_length*side_length];
-
-            call(kernels[j], streams[j], param, &d_results[j*side_length*side_length]);
-
-            jobsLaunched++;
+        // get information for throttle many jobs or until we are out of jobs
+	for(int q=0; q<throttle && k<jobs; q++){
+	    kernels[q] = getNextKernel();
+	    inputFiles[q] = getKernelInput();
+            outputFiles[q] = getKernelOutput();
             k++;
+            batchSize++;
+	}
+
+	// An array containing the state that each kernel needs
+	void **setupResults = (void **) malloc(throttle*sizeof(void *));
+
+	// Let each kernel read its input file and fill its setupResult
+	for(int q=0; q<batchSize; q++){
+	    kernel_setup(kernels[q], streams[q], inputFiles[q], setupResults[q]);
+	}  
+
+	// call each kernel in a different stream giving it its setupResult
+        for(int q=0; q<batchSize; q++){
+            kernel_call(kernels[q], streams[q], setupResults[q]);
         }
 
+	// wait for all kernels to finish
         cudaError err = cudaDeviceSynchronize();
 	printf("finished a batch: %s\n", cudaGetErrorString( err ) );
 
-	// write to host
-	cudaMemcpy(h_results, d_results, throttle*side_length*side_length*sizeof(float), cudaMemcpyDeviceToHost);
+	// let each kernel copy its results back and write to its output file
+	// they should do there own clean up (i.e. memory deallocate and closing files)
+	for(int q=0; q<batchSize; q++){
+	    kernel_finish(kernels[q], outputFiles[q], setupResults[q]);
+	}
 
-	// write result to file
-	writeMatrixToFile(h_results,side_length);
-
-	cudaFree(d_results);
-	cudaFree(d_arrayA);
+	//free the arrays that we used;
 	free(kernels);
-	free(parameters);
-	free(h_arrayA);
-        free(h_results);
+	free(inputFiles);
+	free(outputFiles);
     }
 
     cudaError err = cudaDeviceSynchronize();

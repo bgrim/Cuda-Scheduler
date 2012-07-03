@@ -15,7 +15,7 @@ __global__ void clock_block(int kernel_time, int clockRate)
 }
 
 
-void sleep_setup(cudaStream_t stream, char *filename, void *setupResult)
+void *sleep_setup(cudaStream_t stream, char *filename)
 {
     //open file
     FILE * ftp;
@@ -25,10 +25,9 @@ void sleep_setup(cudaStream_t stream, char *filename, void *setupResult)
     int kernel_time;
     fscanf(ftp, "%d", &kernel_time);
 
-    // set the value of setupResult to the address of kernel_time
-    setupResult = (void *) &kernel_time;
-
     fclose(ftp);
+
+    return (void *) &kernel_time;
 }
 
 void sleep(cudaStream_t stream, void *setupResult)
@@ -50,7 +49,7 @@ void sleep(cudaStream_t stream, void *setupResult)
 void sleep_finish(char *filename, void *setupResult)
 {
     // opens the output file
-    int *kernel_time = (int *)setupResult;
+    int *kernel_time = (int *) setupResult;
     FILE *out=fopen(filename, "w");
 
     //write a nice little messege in it, including kernel_time

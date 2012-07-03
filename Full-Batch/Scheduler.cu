@@ -3,7 +3,7 @@
 #include <sys/time.h>
 #include "matrixMul_kernel.cu"
 #include "sleep_kernel.cu"
-#include "queue.c"
+
 
 /////////////////////////////////////////////////////////////////
 // Global Variables
@@ -29,21 +29,23 @@ int getNextKernel()
 }
 char *getKernelInput()
 {
-    return "MatrixIn.txt";
+    return "matrixIn.txt";
 }
 char *getKernelOutput(){
-    return "MatrixOut.txt"; 
+    return "matrixOut.txt"; 
 }
 
 
 
 //This method will let whatever kernel is about to run setup any device memory it needs
 //  and do any file I/O needed. All Asynchronous operations will be in stream
-void kernel_setup(int kernel, cudaStream_t stream, char * filename, void *setupResult)
+void *kernel_setup(int kernel, cudaStream_t stream, char * filename)
 {
-    if(kernel==1) sleep_setup(stream, filename, setupResult);
+    if(kernel==1) return sleep_setup(stream, filename);
 
-    if(kernel==2) matMul_setup(stream, filename, setupResult);
+    if(kernel==2) return matMul_setup(stream, filename);
+
+    return (void *) 1;
 }
 
 //This method will launch the given kernel in stream with setupResults.
@@ -122,8 +124,9 @@ int main(int argc, char **argv)
 
 	// Let each kernel read its input file and fill its setupResult
 	for(int q=0; q<batchSize; q++){
-	    kernel_setup(kernels[q], streams[q], inputFiles[q], setupResults[q]);
-	}  
+	    setupResults[q] = kernel_setup(kernels[q], streams[q], inputFiles[q]);
+            printf("Ugh: %d\n", ((matMulRecord *) setupResults[q])->side_length);
+	}
 
 	// call each kernel in a different stream giving it its setupResult
         for(int q=0; q<batchSize; q++){
@@ -139,7 +142,7 @@ int main(int argc, char **argv)
 	for(int q=0; q<batchSize; q++){
 	    kernel_finish(kernels[q], outputFiles[q], setupResults[q]);
 	}
-
+	printf("finished kernel_finish");
 	//free the arrays that we used;
 	free(kernels);
 	free(inputFiles);

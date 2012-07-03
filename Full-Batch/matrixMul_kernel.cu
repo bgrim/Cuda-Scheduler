@@ -7,51 +7,59 @@ void printDiff(float*, float*, int, int, int, float);
 bool check(float*, float*, int, float);
 void matMul_setup(cudaStream_t s, char *filename, void *matrixSetupResults);
 void specificInit(float* data, int side_length);
-void writeMatrixToFile(float* h_result, int side_length);
-void matMul_finish(char *filename, void *setupResults);
+void writeMatrixToFile(char *filename, float* h_result, int side_length);
+//void matMul_finish(char *filename, void *setupResults);
 
 struct matMulRecord{
   float* h_arrayA;
   float* d_arrayA;
   float* d_results;
   int side_length;
-}
+};
 
 extern "C"
+
 // start the finish
-matMul_finish(char *filename, void *setupResults){
-  // rip apart the record
-  // *setupResults == matMulRecord( float *h_arrayA, float *d_arrayA, float *d_result, int side_length);
-  matMulRecord r = (matMulRecord)setupResults;
+void matMul_finish(char *filename, void *setupResults){
+  matMulRecord *r = (matMulRecord *) setupResults;
+
+  float *h_arrayA = r->h_arrayA;
+  float *d_arrayA = r->d_arrayA;
+  float *d_results = r->d_results;
+  int side_length = r->side_length;
 
   // This allocates an intermediate host array, h_results,
   float* h_results = (float*)malloc(side_length*side_length*sizeof(float));
 
   // then copies results from d_results to h_results
-  cudaMemcpy(h_results, d_results, throttle*side_length*side_length*sizeof(float), cudaMemcpyDeviceToHost);
- 
-  // write result to file                                                                                                                                                                             
-  writeMatrixToFile(r.h_results, r.side_length);
-  
+  cudaMemcpy(h_results, d_results, side_length*side_length*sizeof(float), cudaMemcpyDeviceToHost);
+
+  printf("start writing\n");
+  writeMatrixToFile(filename, h_results, side_length);
+  printf("stop writing\n");
   // then deallocates all arrays
   cudaFree(d_results);
   cudaFree(d_arrayA);
   free(h_arrayA);
   free(h_results);
+  free(r);
 }
+
+
 // function that writes a matrix to a file
-void writeMatrixToFile(float* h_result, int side_length)
+void writeMatrixToFile(char *filename, float* h_result, int side_length)
 {
-  FILE *matrix=fopen("matrixOut.txt", "w");
+  FILE *matrix=fopen(filename, "w");
   int size = side_length*side_length;
 
+  printf("starting loop, and size = %d\n", size);
   for(int i = 0; i<size; i++){
     fprintf(matrix, "%lf\t", h_result[i]);
     if((i+1)%side_length==0){
       fprintf(matrix, "\n");
     }
   }
-  // close the file                                                                                                                                                                                       
+  printf("stopping loop\n");
   fclose(matrix);
 }
 
@@ -70,7 +78,7 @@ void specificInit(float* data, char* filename, int side_length)
 }
 
 // matMul_Setup
-void matMul_setup(cudaStream_ts, char* filename, void* matrixSetupResults){
+void *matMul_setup(cudaStream_t s, char* filename){
 
   // get side length of file
   // faster for get lines in file or from single line
@@ -94,14 +102,14 @@ void matMul_setup(cudaStream_ts, char* filename, void* matrixSetupResults){
   cudaMemcpy(d_arrayA, h_arrayA, side_length*side_length*sizeof(float), cudaMemcpyHostToDevice);
 
   // get a record out of the matrixSetupResults
-  matMulRecord r;
-  r.h_arrayA = h_arrayA;
-  r.d_arraryA = d_arrayA;
-  r.d_results = d_results;
-  r.side_length = side_length;
- 
+  matMulRecord *r = (matMulRecord *) malloc(sizeof(struct matMulRecord));
+  r->h_arrayA = h_arrayA;
+  r->d_arrayA = d_arrayA;
+  r->d_results = d_results;
+  r->side_length = side_length;
+   printf("r->side_length = %d\n", r->side_length);
   // change the value of the matrixSetupResults equal to the record that was just created
-  matrixSetupResults = (void*)&r;
+  return (void *) r;
 }
 
 //
@@ -179,17 +187,21 @@ cudaMatrixMul( float* C, float* A, float* B, int wA, int wB)
 }
 
 // CPU wrapper method matrixMul for launching CUDA kernel
-void matrixMul(cudaStream_t s, int side_length, float* d_arrayA, float* d_result){
-
-  int size = side_length;
+void matrixMul(cudaStream_t s, void *setupResults){
   int block_size = 32;
+
+  matMulRecord *r = (matMulRecord *) setupResults;
+
+  float *d_arrayA = r->d_arrayA;
+  float *d_results = r->d_results;
+  int side_length = r->side_length;
 
   // setup execution parameters                                                           
   dim3 threads(block_size, block_size);
   dim3 grid(side_length / threads.x, side_length / threads.y);
                                                                                                                                                                         
   // call the cudaMatrixMul cuda function
-  cudaMatrixMul<32><<< grid, threads, s>>>(d_result, d_arrayA, d_arrayA, side_length, side_length);
+  cudaMatrixMul<32><<< grid, threads, 0, s>>>(d_results, d_arrayA, d_arrayA, side_length, side_length);
 }
 
 

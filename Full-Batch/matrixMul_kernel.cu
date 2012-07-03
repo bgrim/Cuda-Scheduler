@@ -1,56 +1,77 @@
-//declar globals and structs
+//declare globals and structs and headers
 struct timeval tp;
 double getTime_sec();
 void runTest(int argc, char** argv);
 void randomInit(float*, int);
 void printDiff(float*, float*, int, int, int, float);
 bool check(float*, float*, int, float);
-void matMul_setup(cudaStream_t s, char *filename, void *setupResults);
+void matMul_setup(cudaStream_t s, char *filename, void *matrixSetupResults);
+void specificInit(float* data, int side_length);
+
+struct matMulRecord{
+  float* h_arrayA;
+  float* d_arrayA;
+  float* d_results;
+  int side_length;
+}
 
 extern "C"
+
+// Allocates a matrix with specific float entries.                                                                                                                                                        
+void specificInit(float* data, char* filename, int side_length)
+{
+  FILE * ftp;
+  ftp = fopen(filename,"r");
+  
+  int size = side_length*side_length;
+
+  for(int i = 0; i < size; i++){
+    fscanf(ftp, "%f", &data[i]);
+  }
+}
+
 // matMul_Setup
-void matMul_setup(cudaStream_ts, char* filename, void* setupResults){
-  // host array A                                                                                                                                                                                     
-  float* h_arrayA = (float*)malloc(throttle*side_length*side_length*sizeof(float));
+void matMul_setup(cudaStream_ts, char* filename, void* matrixSetupResults){
+
+  // get side length of file
+  // faster for get lines in file or from single line
+  int side_length = 32;
+
+  // host array A (the matrix to be squared)                                                                                                                                                            
+  float* h_arrayA = (float*)malloc(side_length*side_length*sizeof(float));
 
   // device array A                                                                                                                                                                                   
   float* d_arrayA;
-  cudaMalloc(&d_arrayA, throttle*side_length*side_length*sizeof(float));
+  cudaMalloc(&d_arrayA, side_length*side_length*sizeof(float));
 
+  // move to matmul finish
   // host results                                                                                                                                                                                     
-  float* h_results = (float*)malloc(throttle*side_length*side_length*sizeof(float));
+  float* h_results = (float*)malloc(side_length*side_length*sizeof(float));
+  // move
 
   // device results                                                                                                                                                                                   
   float* d_results;
-  cudaMalloc(&d_results, throttle*side_length*side_length*sizeof(float));
+  cudaMalloc(&d_results, side_length*side_length*sizeof(float));
 
   // build arrays                                                                                                                                                                                     
-  for(int p=0; p<throttle; p++){
-    specificInit(&h_arrayA[p*side_length*side_length], side_length);
-  }
+  specificInit(h_arrayA, filename, side_length);
 
   // move to device                                                                                                                                                                                   
-  cudaMemcpy(d_arrayA, h_arrayA, throttle*side_length*side_length*sizeof(float), cudaMemcpyHostToDevice);
+  cudaMemcpy(d_arrayA, h_arrayA, side_length*side_length*sizeof(float), cudaMemcpyHostToDevice);
 
-  // loop over each batch                                                                                                                                                                             
-  for(int j=0;j<throttle && k<jobs;j++){
-    //printf("Launching batch %d\n", j);                                                                                                                                                            
-    float* param = &d_arrayA[j*side_length*side_length];
-
-    call(kernels[j], streams[j], param, &d_results[j*side_length*side_length]);
-
-    jobsLaunched++;
-    k++;
-  }
-
-  cudaError err = cudaDeviceSynchronize();
-  printf("finished a batch: %s\n", cudaGetErrorString( err ) );
-
-  // write to host                                                                                                                                                                                    
-  cudaMemcpy(h_results, d_results, throttle*side_length*side_length*sizeof(float), cudaMemcpyDeviceToHost);
+  // get a record out of the matrixSetupResults
+  matMulRecord r;
+  r.h_arrayA = h_arrayA;
+  r.d_arraryA = d_arrayA;
+  r.d_results = d_results;
+  r.side_length = side_length;
+ 
+  // change the value of the matrixSetupResults equal to the record that was just created
+  matrixSetupResults = (void*)&r;
 }
 
-// cudaMatrixMul
+//
+// cudaMatrixMul()
 template <int BLOCK_SIZE> __global__ void
 cudaMatrixMul( float* C, float* A, float* B, int wA, int wB)
 {

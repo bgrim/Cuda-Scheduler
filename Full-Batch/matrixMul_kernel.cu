@@ -8,6 +8,7 @@ bool check(float*, float*, int, float);
 void matMul_setup(cudaStream_t s, char *filename, void *matrixSetupResults);
 void specificInit(float* data, int side_length);
 void writeMatrixToFile(float* h_result, int side_length);
+void matMul_finish(char *filename, void *setupResults);
 
 struct matMulRecord{
   float* h_arrayA;
@@ -17,7 +18,28 @@ struct matMulRecord{
 }
 
 extern "C"
+// start the finish
+matMul_finish(char *filename, void *setupResults){
+  // rip apart the record
+  // *setupResults == matMulRecord( float *h_arrayA, float *d_arrayA, float *d_result, int side_length);
+  matMulRecord r = (matMulRecord)setupResults;
 
+  // This allocates an intermediate host array, h_results,
+  float* h_results = (float*)malloc(side_length*side_length*sizeof(float));
+
+  // then copies results from d_results to h_results
+  cudaMemcpy(h_results, d_results, throttle*side_length*side_length*sizeof(float), cudaMemcpyDeviceToHost);
+ 
+  // write result to file                                                                                                                                                                             
+  writeMatrixToFile(r.h_results, r.side_length);
+  
+  // then deallocates all arrays
+  cudaFree(d_results);
+  cudaFree(d_arrayA);
+  free(h_arrayA);
+  free(h_results);
+}
+// function that writes a matrix to a file
 void writeMatrixToFile(float* h_result, int side_length)
 {
   FILE *matrix=fopen("matrixOut.txt", "w");
@@ -60,11 +82,6 @@ void matMul_setup(cudaStream_ts, char* filename, void* matrixSetupResults){
   // device array A                                                                                                                                                                                   
   float* d_arrayA;
   cudaMalloc(&d_arrayA, side_length*side_length*sizeof(float));
-
-  // move to matmul finish
-  // host results                                                                                                                                                                                     
-  float* h_results = (float*)malloc(side_length*side_length*sizeof(float));
-  // move
 
   // device results                                                                                                                                                                                   
   float* d_results;

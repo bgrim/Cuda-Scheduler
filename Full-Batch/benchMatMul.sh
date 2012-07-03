@@ -10,15 +10,15 @@ matrixSize=32
     do
 	echo ""
 	echo ""
-	echo "Throttle count equals: " $throttle >> log$i.txt
-	echo "The number of jobs is: " $jobs >> log$i.txt
-	echo "The matrix size is   : " $matrixSize >> log$i.txt
+	echo "Throttle count equals: " $throttle >> logs/log$i.txt
+	echo "The number of jobs is: " $jobs >> logs/log$i.txt
+	echo "The matrix size is   : " $matrixSize >> logs/log$i.txt
 
 	# generate the matrix
 	./gen $matrixSize
 
 	# run the matrix multiply
-	(time ./run $throttle $jobs) 2>> log$i.txt
+	(time ./run $throttle $jobs) 2>> logs/log$i.txt
 
 	# double the matrix size
 	matrixSize=$(($matrixSize+$matrixSize))    

@@ -98,9 +98,6 @@ void specificInit(float* data, int side_length)
   for(int i = 0; i < size; i++){
       fscanf(ftp, "%f", &data[i]);
   }
-  //printf("matrix: %f   %f\n", data[0], data[1]);
-  //printf("        %f   %f\n", data[2], data[3]);
-  //  testRead(data, side_length);
 }
 
 ////////////////////////////////////////////////////////////////////

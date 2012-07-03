@@ -5,13 +5,52 @@ void runTest(int argc, char** argv);
 void randomInit(float*, int);
 void printDiff(float*, float*, int, int, int, float);
 bool check(float*, float*, int, float);
+void matMul_setup(cudaStream_t s, char *filename, void *setupResults);
 
 extern "C"
-void computeGold(float*, const float*, const float*, unsigned int, unsigned int, unsigned int);
+// matMul_Setup
+void matMul_setup(cudaStream_ts, char* filename, void* setupResults){
+  // host array A                                                                                                                                                                                     
+  float* h_arrayA = (float*)malloc(throttle*side_length*side_length*sizeof(float));
 
-//    END OF KERNEL                                                                                                                                                                                        
-// start CUDA mat mul
+  // device array A                                                                                                                                                                                   
+  float* d_arrayA;
+  cudaMalloc(&d_arrayA, throttle*side_length*side_length*sizeof(float));
 
+  // host results                                                                                                                                                                                     
+  float* h_results = (float*)malloc(throttle*side_length*side_length*sizeof(float));
+
+  // device results                                                                                                                                                                                   
+  float* d_results;
+  cudaMalloc(&d_results, throttle*side_length*side_length*sizeof(float));
+
+  // build arrays                                                                                                                                                                                     
+  for(int p=0; p<throttle; p++){
+    specificInit(&h_arrayA[p*side_length*side_length], side_length);
+  }
+
+  // move to device                                                                                                                                                                                   
+  cudaMemcpy(d_arrayA, h_arrayA, throttle*side_length*side_length*sizeof(float), cudaMemcpyHostToDevice);
+
+  // loop over each batch                                                                                                                                                                             
+  for(int j=0;j<throttle && k<jobs;j++){
+    //printf("Launching batch %d\n", j);                                                                                                                                                            
+    float* param = &d_arrayA[j*side_length*side_length];
+
+    call(kernels[j], streams[j], param, &d_results[j*side_length*side_length]);
+
+    jobsLaunched++;
+    k++;
+  }
+
+  cudaError err = cudaDeviceSynchronize();
+  printf("finished a batch: %s\n", cudaGetErrorString( err ) );
+
+  // write to host                                                                                                                                                                                    
+  cudaMemcpy(h_results, d_results, throttle*side_length*side_length*sizeof(float), cudaMemcpyDeviceToHost);
+}
+
+// cudaMatrixMul
 template <int BLOCK_SIZE> __global__ void
 cudaMatrixMul( float* C, float* A, float* B, int wA, int wB)
 {
@@ -83,26 +122,19 @@ cudaMatrixMul( float* C, float* A, float* B, int wA, int wB)
     int c = wB * BLOCK_SIZE * by + BLOCK_SIZE * bx;
     C[c + wB * ty + tx] = Csub;
 }
- // Allocates a matrix with random float entries.                                                                                            
 
-
+// CPU wrapper method matrixMul for launching CUDA kernel
 void matrixMul(cudaStream_t s, int side_length, float* d_arrayA, float* d_result){
 
-  printf("IN matrixMul\n");
   int size = side_length;
-
   int block_size = 32;
 
   // setup execution parameters                                                           
   dim3 threads(block_size, block_size);
   dim3 grid(side_length / threads.x, side_length / threads.y);
                                                                                                                                                                         
-  printf("Calculating: C = A x A where all sides equal: %d\n", side_length);
-
   // call the cudaMatrixMul cuda function
-    cudaMatrixMul<32><<< grid, threads >>>(d_result, d_arrayA, d_arrayA, side_length, side_length);
-    //int hard_coded = 100;
-    //cudaMatrixMul<32><<< grid, threads >>>(d_C, d_A, d_B, hard_coded, hard_coded);
+  cudaMatrixMul<32><<< grid, threads, s>>>(d_result, d_arrayA, d_arrayA, side_length, side_length);
 }
 
 

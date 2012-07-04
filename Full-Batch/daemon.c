@@ -98,6 +98,8 @@ char *daemon_GetOutputFile()
 
 void *daemon_Main(void *numOfJobs)
 {
+  int max=64;  //the lasrgest number of chars in a filename
+
   int *jobs = (int *) numOfJobs;
   for(int i=0; i<(*jobs); i++){
     pthread_mutex_lock(&queueLock);
@@ -106,11 +108,15 @@ void *daemon_Main(void *numOfJobs)
     int *kernelType = (int *) malloc(sizeof(int));
     *kernelType = 2;
 
-    char *fileIn = (char *) malloc(sizeof(char)*13);
-    fileIn = "matrixIn.txt";
 
-    char *fileOut = (char *) malloc(sizeof(char)*14);
-    fileOut = "matrixOut.txt";
+    //char buffer[maxFilenameLength];
+    char *fileIn = (char *) malloc(sizeof(char)*(max+1));
+    sprintf(fileIn, "Inputs/matrixIn%d.txt", i);
+    //sprintf(fileIn, "Inputs/matrixIn.txt");
+
+    char *fileOut = (char *) malloc(sizeof(char)*(max+1));
+    sprintf(fileOut, "Outputs/matrixOut%d.txt", i);
+    //sprintf(fileOut, "Outputs/matrixOut.txt");
 
     Enqueue((void *) kernelType, kernelTypes);
     Enqueue((void *) fileIn, inputFiles); //could make the file name depend on i

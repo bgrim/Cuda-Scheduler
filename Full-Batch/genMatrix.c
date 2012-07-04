@@ -5,7 +5,7 @@
 //#define ROW 5
 //#define COLUMN 5
 
-void writeMatrixtoFile(int row, int column);
+void writeMatrixtoFile(int row, int column, char *filename);
 
 //------------------------------------------------------------------------------
 //Main function
@@ -14,21 +14,23 @@ int main(int argc, char **argv)
 {
   int ROW=0;
   int COLUMN =0;
+  char * filename = "matrixIn.txt";
   if( argc>1 ){
     ROW = atoi(argv[1]);       //could be used to pass in parameters
     COLUMN = atoi(argv[1]);       //could be used to pass in parameters       
   }
+  if( argc>2) filename = argv[2];
   printf("side length is %d\n", ROW);
-  writeMatrixtoFile(ROW, COLUMN);
+  writeMatrixtoFile(ROW, COLUMN, filename);
 
   return 0;
 }
 
 //------------------------------------------------------------------------------
 //This function is for writing a matrix into a file
-void writeMatrixtoFile(int row, int column)
+void writeMatrixtoFile(int row, int column, char *filename)
 {
-  FILE *matrix=fopen("matrixIn.txt", "w");
+  FILE *matrix=fopen(filename, "w");
   int a=0, b=0;
   for(a=0;a<row;a++)     
     {

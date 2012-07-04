@@ -49,9 +49,9 @@ void matMul_finish(char *filename, void *setupResults){
   // then copies results from d_results to h_results
   cudaMemcpy(h_results, d_results, side_length*side_length*sizeof(float), cudaMemcpyDeviceToHost);
 
-  printf("start writing\n");
+
   writeMatrixToFile(filename, h_results, side_length);
-  printf("stop writing\n");
+
   // then deallocates all arrays
   cudaFree(d_results);
   cudaFree(d_arrayA);
@@ -67,15 +67,12 @@ void writeMatrixToFile(char *filename, float* h_result, int side_length)
   FILE *matrix=fopen(filename, "w");
   int size = side_length*side_length;
 
-  printf("starting loop, and size = %d\n", size);
   for(int i = 0; i<size; i++){
     fprintf(matrix, "%f\t", h_result[i]);
     if((i+1)%side_length==0){
       fprintf(matrix, "\n");
-      //printf("ending the %dth row and the last element is %d\n", i/side_length, i);
     }
   }
-  printf("stopping loop\n");
   fclose(matrix);
 }
 
@@ -123,8 +120,7 @@ void *matMul_setup(cudaStream_t s, char* filename){
   r->d_arrayA = d_arrayA;
   r->d_results = d_results;
   r->side_length = side_length;
-   printf("r->side_length = %d\n", r->side_length);
-  // change the value of the matrixSetupResults equal to the record that was just created
+
   return (void *) r;
 }
 

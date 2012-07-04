@@ -3,7 +3,8 @@
 #include <sys/time.h>
 #include "matrixMul_kernel.cu"
 #include "sleep_kernel.cu"
-
+#include "daemon.c"
+#include <pthread.h>
 
 /////////////////////////////////////////////////////////////////
 // Global Variables
@@ -11,7 +12,7 @@
 
 double startTime_ms;  //this is helpful for debugging sometimes
                       //its vlue is the first thing set by the program
-
+struct tp;
 ////////////////////////////////////////////////////////////////
 // Utilities
 ////////////////////////////////////////////////////////////////
@@ -20,22 +21,6 @@ double getTime_msec() {
    return static_cast<double>(tp.tv_sec) * 1E3
            + static_cast<double>(tp.tv_usec) / 1E3;
 }
-
-//Eventually getNextKernel(), getKernelInput() and getKernelOutput() will interact
-//  with a daemon that is listening for job information.
-int getNextKernel()
-{
-    return 2;
-}
-char *getKernelInput()
-{
-    return "matrixIn.txt";
-}
-char *getKernelOutput(){
-    return "matrixOut.txt"; 
-}
-
-
 
 //This method will let whatever kernel is about to run setup any device memory it needs
 //  and do any file I/O needed. All Asynchronous operations will be in stream
@@ -91,7 +76,11 @@ int main(int argc, char **argv)
         throttle = atoi(argv[1]);
         jobs = atoi(argv[2]);
     }
-   
+
+    daemon_init(jobs);
+    pthread_t daemon;
+    pthread_create(&daemon, NULL, daemon_Main, (void *) &jobs );
+
     printf("The number of jobs is equal to: %d\n", jobs);
 
     //make throttle many streams to run concurrent kernels in
@@ -99,6 +88,7 @@ int main(int argc, char **argv)
     for(int i = 0; i < throttle; i++)
 	cudaStreamCreate(&streams[i]);
 
+    int batchNum = 0;
 
     // loop for number of batches
     for(int k = 0; k<jobs;)
@@ -112,9 +102,15 @@ int main(int argc, char **argv)
 
         // get information for throttle many jobs or until we are out of jobs
 	for(int q=0; q<throttle && k<jobs; q++){
-	    kernels[q] = getNextKernel();
-	    inputFiles[q] = getKernelInput();
-            outputFiles[q] = getKernelOutput();
+	    kernels[q] = daemon_GetNextKernel();
+	    inputFiles[q] = daemon_GetInputFile();
+            outputFiles[q] = daemon_GetOutputFile();
+
+	    printf("Kernel information for kernel  %d  of batch number  %d\n", q, batchNum);
+	    printf("kernel: %d\n", kernels[q]);
+	    printf("input:  %s\n", inputFiles[q]);
+	    printf("output: %s\n\n", outputFiles[q]);
+
             k++;
             batchSize++;
 	}
@@ -125,7 +121,6 @@ int main(int argc, char **argv)
 	// Let each kernel read its input file and fill its setupResult
 	for(int q=0; q<batchSize; q++){
 	    setupResults[q] = kernel_setup(kernels[q], streams[q], inputFiles[q]);
-            printf("Ugh: %d\n", ((matMulRecord *) setupResults[q])->side_length);
 	}
 
 	// call each kernel in a different stream giving it its setupResult
@@ -135,18 +130,22 @@ int main(int argc, char **argv)
 
 	// wait for all kernels to finish
         cudaError err = cudaDeviceSynchronize();
-	printf("finished a batch: %s\n", cudaGetErrorString( err ) );
+	printf("batch finished kernels with error: %s\n", cudaGetErrorString( err ) );
 
 	// let each kernel copy its results back and write to its output file
 	// they should do there own clean up (i.e. memory deallocate and closing files)
 	for(int q=0; q<batchSize; q++){
 	    kernel_finish(kernels[q], outputFiles[q], setupResults[q]);
 	}
-	printf("finished kernel_finish");
+
 	//free the arrays that we used;
 	free(kernels);
 	free(inputFiles);
 	free(outputFiles);
+
+	printf("finished batch number: %d\n", batchNum);
+
+        batchNum++;
     }
 
     cudaError err = cudaDeviceSynchronize();
@@ -155,10 +154,10 @@ int main(int argc, char **argv)
 
     printf("The number of jobs equals: %d\n",jobs);
     printf("The current throttle is: %d\n", throttle);
-    // printf("The estimated time is: %d\n\n", (((jobs-1)/throttle)+1)*kernel_time);
 
     for(int i =0; i<throttle; i++) cudaStreamDestroy(streams[i]);
 
+    daemon_free();
     free(streams);
 
     return 0;    

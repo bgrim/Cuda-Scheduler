@@ -1,0 +1,84 @@
+Throttle count equals:  1
+The number of jobs is:  1
+The matrix size is   :  32
+
+real	0m0.138s
+user	0m0.010s
+sys	0m0.130s
+Throttle count equals:  1
+The number of jobs is:  1
+The matrix size is   :  64
+
+real	0m0.139s
+user	0m0.020s
+sys	0m0.120s
+Throttle count equals:  1
+The number of jobs is:  1
+The matrix size is   :  128
+
+real	0m0.149s
+user	0m0.020s
+sys	0m0.130s
+Throttle count equals:  1
+The number of jobs is:  1
+The matrix size is   :  256
+
+real	0m0.186s
+user	0m0.050s
+sys	0m0.130s
+Throttle count equals:  1
+The number of jobs is:  1
+The matrix size is   :  512
+
+real	0m0.357s
+user	0m0.230s
+sys	0m0.130s
+Throttle count equals:  1
+The number of jobs is:  1
+The matrix size is   :  1024
+
+real	0m1.007s
+user	0m0.870s
+sys	0m0.140s
+Throttle count equals:  1
+The number of jobs is:  1
+The matrix size is   :  2048
+
+real	0m3.733s
+user	0m3.560s
+sys	0m0.170s
+Throttle count equals:  1
+The number of jobs is:  1
+The matrix size is   :  4096
+
+real	0m15.119s
+user	0m14.720s
+sys	0m0.390s
+Throttle count equals:  1
+The number of jobs is:  1
+The matrix size is   :  8192
+
+real	1m3.384s
+user	1m2.170s
+sys	0m1.180s
+Throttle count equals:  1
+The number of jobs is:  1
+The matrix size is   :  16384
+
+real	2m3.410s
+user	2m0.330s
+sys	0m3.010s
+Throttle count equals:  1
+The number of jobs is:  1
+The matrix size is   :  32768
+
+real	8m30.165s
+user	8m18.020s
+sys	0m11.290s
+Throttle count equals:  1
+The number of jobs is:  1
+The matrix size is   :  65536
+
+real	0m0.823s
+user	0m0.040s
+sys	0m0.270s

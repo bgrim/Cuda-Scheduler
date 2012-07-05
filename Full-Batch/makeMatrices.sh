@@ -1,5 +1,5 @@
 #! /bin/bash
-sideLength=320
+sideLength=96
 
 for i in {0..63}
 do

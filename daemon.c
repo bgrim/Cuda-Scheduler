@@ -112,11 +112,13 @@ void *daemon_Main(void *numOfJobs)
 
     char *fileIn = (char *) malloc(sizeof(char)*(max+1));
     // sprintf(fileIn, "Inputs/matrixIn%d.txt", i);
-    sprintf(fileIn, "/dev/shm/Inputs/matrixIn%d.txt", i);
+    // sprintf(fileIn, "/dev/shm/Inputs/matrixIn%d.txt", i);
+    sprintf(fileIn, "/tmp/Inputs/matrixIn%d.txt", i);
 
     char *fileOut = (char *) malloc(sizeof(char)*(max+1));
     // sprintf(fileOut, "Outputs/matrixOut%d.txt", i);
-    sprintf(fileOut, "/dev/shm/Outputs/matrixOut%d.txt", i);
+    // sprintf(fileOut, "/dev/shm/Outputs/matrixOut%d.txt", i);
+    sprintf(fileOut, "/tmp/Outputs/matrixOut%d.txt", i);
 
     Enqueue((void *) kernelType, kernelTypes);
     Enqueue((void *) fileIn, inputFiles); //could make the file name depend on i

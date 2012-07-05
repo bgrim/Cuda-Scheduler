@@ -20,9 +20,9 @@ int main(int argc, char **argv)
     COLUMN = atoi(argv[1]);       //could be used to pass in parameters       
   }
   if( argc>2) filename = argv[2];
-  printf("side length is %d\n", ROW);
   writeMatrixtoFile(ROW, COLUMN, filename);
 
+  printf("finished making:  %s\n", filename);
   return 0;
 }
 

@@ -130,7 +130,7 @@ int main(int argc, char **argv)
 
 	// wait for all kernels to finish
         cudaError err = cudaDeviceSynchronize();
-	printf("batch finished kernels with error: %s\n", cudaGetErrorString( err ) );
+	printf("kernels finished kernels with error: %s\n", cudaGetErrorString( err ) );
 
 	// let each kernel copy its results back and write to its output file
 	// they should do there own clean up (i.e. memory deallocate and closing files)
@@ -143,13 +143,13 @@ int main(int argc, char **argv)
 	free(inputFiles);
 	free(outputFiles);
 
-	printf("finished batch number: %d\n", batchNum);
+	printf("finished batch number: %d\n\n", batchNum);
 
         batchNum++;
     }
 
     cudaError err = cudaDeviceSynchronize();
-    printf("finished all jobs: %s\n", cudaGetErrorString( err ) );
+    printf("finished all jobs with error: %s\n\n", cudaGetErrorString( err ) );
     // release resources
 
     printf("The number of jobs equals: %d\n",jobs);

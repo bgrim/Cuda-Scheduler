@@ -22,12 +22,12 @@ void *sleep_setup(cudaStream_t stream, char *filename)
     ftp = fopen(filename,"r");
 
     // read the kernel_time from the file
-    int kernel_time;
-    fscanf(ftp, "%d", &kernel_time);
+    int *kernel_time = (int *) malloc(sizeof(int));
+    fscanf(ftp, "%d", kernel_time);
 
     fclose(ftp);
 
-    return (void *) &kernel_time;
+    return (void *) kernel_time;
 }
 
 void sleep(cudaStream_t stream, void *setupResult)
@@ -57,6 +57,7 @@ void sleep_finish(char *filename, void *setupResult)
 
     //clean up
     fclose(out);
+    free(kernel_time);
 }
 
 

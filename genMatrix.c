@@ -38,19 +38,29 @@ void writeMatrixtoFile(int row, int column, char *filename)
   char *temp = (char *) malloc(row*column*sizeof(char)*9 + column);
 
   for(a=0;a<row;a++)     
-    {
+  {
       for(b=0;b<column;b++)  
-        {
-	  char * s = (char *) malloc(sizeof(char)*100);
+      {
+	char * s = (char *) malloc(sizeof(char)*100);	  
+	  //	  printf("before sprintf\n");
 	  sprintf(s, "%f\t", ((float)rand())/((float) RAND_MAX));
-	  strcpy(temp, (const char *) s);
-	  //strcat(buffer, (const char*)temp);
-        }
+	  //printf("in loop\n");
+      	  strcpy(temp, (const char *) s);
+	  free(s);
+	  strcat(buffer, (const char*)temp);
+      }
+      //      printf("out of loop\n");
       strcat(buffer, "\n");
-      fprintf(matrix, buffer);
-      buffer ="";
-    }
-  
+      printf("buffer is:%s\n", buffer);
+      //      printf("before fprint\n");
+      fprintf(matrix, "%s",buffer);
+      //      printf("printed line\n");
+      buffer = "";
+      temp = "";
+      //      fclose(matrix);
+  }
+  //  free(s);
+  free(temp);
   free(buffer);
   fclose(matrix);
 }

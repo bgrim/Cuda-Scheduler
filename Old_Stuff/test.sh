@@ -1,0 +1,10 @@
+time ./run  8 256 1000
+time ./run  8 256 1000
+time ./run  8 256 1000
+time ./run  8 256 1000
+time ./run  8 256 1000
+time ./run  8 256 1000
+time ./run  8 256 1000
+time ./run  8 256 1000
+time ./run  8 256 1000
+time ./run  8 256 1000

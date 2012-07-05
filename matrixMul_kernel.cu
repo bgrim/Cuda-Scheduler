@@ -1,17 +1,131 @@
-//declar globals and structs
+//declare globals and structs and headers
 struct timeval tp;
 double getTime_sec();
 void runTest(int argc, char** argv);
 void randomInit(float*, int);
 void printDiff(float*, float*, int, int, int, float);
 bool check(float*, float*, int, float);
+void matMul_setup(cudaStream_t s, char *filename, void *matrixSetupResults);
+void specificInit(float* data, int side_length);
+void writeMatrixToFile(char *filename, float* h_result, int side_length);
+int getMatrixSideLengthFromFile(char* filename);
+//void matMul_finish(char *filename, void *setupResults);
+
+int getMatrixSideLengthFromFile(char* filename){
+  int c=0;
+  char ch='\0';
+  FILE* ftp;
+  ftp=fopen(filename, "r");
+  while(ch!='\n') {
+    ch=fgetc(ftp);
+    if(ch=='\t'){
+      c++;
+    }
+  }
+  return c;
+}
+
+struct matMulRecord{
+  float* h_arrayA;
+  float* d_arrayA;
+  float* d_results;
+  int side_length;
+};
 
 extern "C"
-void computeGold(float*, const float*, const float*, unsigned int, unsigned int, unsigned int);
 
-//    END OF KERNEL                                                                                                                                                                                        
-// start CUDA mat mul
+// start the finish
+void matMul_finish(char *filename, void *setupResults){
+  matMulRecord *r = (matMulRecord *) setupResults;
 
+  float *h_arrayA = r->h_arrayA;
+  float *d_arrayA = r->d_arrayA;
+  float *d_results = r->d_results;
+  int side_length = r->side_length;
+
+  // This allocates an intermediate host array, h_results,
+  float* h_results = (float*)malloc(side_length*side_length*sizeof(float));
+
+  // then copies results from d_results to h_results
+  cudaMemcpy(h_results, d_results, side_length*side_length*sizeof(float), cudaMemcpyDeviceToHost);
+
+
+  writeMatrixToFile(filename, h_results, side_length);
+
+  // then deallocates all arrays
+  cudaFree(d_results);
+  cudaFree(d_arrayA);
+  free(h_arrayA);
+  free(h_results);
+  free(r);
+}
+
+
+// function that writes a matrix to a file
+void writeMatrixToFile(char *filename, float* h_result, int side_length)
+{
+  FILE *matrix=fopen(filename, "w");
+  int size = side_length*side_length;
+
+  for(int i = 0; i<size; i++){
+    fprintf(matrix, "%f\t", h_result[i]);
+    if((i+1)%side_length==0){
+      fprintf(matrix, "\n");
+    }
+  }
+  fclose(matrix);
+}
+
+// Allocates a matrix with specific float entries.                                                                                                                                                        
+void specificInit(float* data, char* filename, int side_length)
+{
+  FILE * ftp;
+  ftp = fopen(filename,"r");
+  
+  int size = side_length*side_length;
+
+  for(int i = 0; i < size; i++){
+    fscanf(ftp, "%f", &data[i]);
+  }
+  fclose(ftp);
+}
+
+// matMul_Setup
+void *matMul_setup(cudaStream_t s, char* filename){
+
+  // get side length of file
+  // faster for get lines in file or from single line
+  int side_length = getMatrixSideLengthFromFile(filename);
+
+  // host array A (the matrix to be squared)                                                                                                                                                            
+  float* h_arrayA = (float*)malloc(side_length*side_length*sizeof(float));
+
+  // device array A                                                                                                                                                                                   
+  float* d_arrayA;
+  cudaMalloc(&d_arrayA, side_length*side_length*sizeof(float));
+
+  // device results                                                                                                                                                                                   
+  float* d_results;
+  cudaMalloc(&d_results, side_length*side_length*sizeof(float));
+
+  // build arrays                                                                                                                                                                                     
+  specificInit(h_arrayA, filename, side_length);
+
+  // move to device                                                                                                                                                                                   
+  cudaMemcpy(d_arrayA, h_arrayA, side_length*side_length*sizeof(float), cudaMemcpyHostToDevice);
+
+  // get a record out of the matrixSetupResults
+  matMulRecord *r = (matMulRecord *) malloc(sizeof(struct matMulRecord));
+  r->h_arrayA = h_arrayA;
+  r->d_arrayA = d_arrayA;
+  r->d_results = d_results;
+  r->side_length = side_length;
+
+  return (void *) r;
+}
+
+//
+// cudaMatrixMul()
 template <int BLOCK_SIZE> __global__ void
 cudaMatrixMul( float* C, float* A, float* B, int wA, int wB)
 {
@@ -83,26 +197,23 @@ cudaMatrixMul( float* C, float* A, float* B, int wA, int wB)
     int c = wB * BLOCK_SIZE * by + BLOCK_SIZE * bx;
     C[c + wB * ty + tx] = Csub;
 }
- // Allocates a matrix with random float entries.                                                                                            
 
-
-void matrixMul(cudaStream_t s, int side_length, float* d_arrayA, float* d_result){
-
-  printf("IN matrixMul\n");
-  int size = side_length;
-
+// CPU wrapper method matrixMul for launching CUDA kernel
+void matrixMul(cudaStream_t s, void *setupResults){
   int block_size = 32;
+
+  matMulRecord *r = (matMulRecord *) setupResults;
+
+  float *d_arrayA = r->d_arrayA;
+  float *d_results = r->d_results;
+  int side_length = r->side_length;
 
   // setup execution parameters                                                           
   dim3 threads(block_size, block_size);
   dim3 grid(side_length / threads.x, side_length / threads.y);
-                                                                                                                                                                        
-  printf("Calculating: C = A x A where all sides equal: %d\n", side_length);
 
   // call the cudaMatrixMul cuda function
-    cudaMatrixMul<32><<< grid, threads >>>(d_result, d_arrayA, d_arrayA, side_length, side_length);
-    //int hard_coded = 100;
-    //cudaMatrixMul<32><<< grid, threads >>>(d_C, d_A, d_B, hard_coded, hard_coded);
+  cudaMatrixMul<32><<< grid, threads, 0, s>>>(d_results, d_arrayA, d_arrayA, side_length, side_length);
 }
 
 

@@ -1,115 +1,58 @@
-//do some include stuff
 #include <stdio.h>
 #include <cuda_runtime.h>
 #include <sys/time.h>
 #include "matrixMul_kernel.cu"
 #include "sleep_kernel.cu"
-#include "queue.c"
+#include "daemon.c"
 #include <pthread.h>
-
-// set the default value of the kernel time to 1 second
-
 
 /////////////////////////////////////////////////////////////////
 // Global Variables
 /////////////////////////////////////////////////////////////////
 
-int kernel_time = 1000;
-
-struct timeval tp;
-
-double startTime_ms;
-
-Queue Q;
-pthread_mutex_t queueLock;
-
-
+double startTime_ms;  //this is helpful for debugging sometimes
+                      //its vlue is the first thing set by the program
+struct tp;
 ////////////////////////////////////////////////////////////////
 // Utilities
 ////////////////////////////////////////////////////////////////
-
 double getTime_msec() {
    gettimeofday(&tp, NULL);
    return static_cast<double>(tp.tv_sec) * 1E3
            + static_cast<double>(tp.tv_usec) / 1E3;
 }
 
-record* getStream()
+//This method will let whatever kernel is about to run setup any device memory it needs
+//  and do any file I/O needed. All Asynchronous operations will be in stream
+void *kernel_setup(int kernel, cudaStream_t stream, char * filename)
 {
-    bool waiting = true;
-    record *r;
-    //cudaStream_t stream;
-    while(waiting)
-    {
-        pthread_mutex_lock(&queueLock);
-        waiting = IsEmpty(Q);
-        if(!waiting)
-        {
-	  //stream = Front(Q);
-	    r = Front(Q);
-            Dequeue(Q);
-        }
-        pthread_mutex_unlock(&queueLock);
-        if(waiting) pthread_yield();
-    }
-    return r;
+    if(kernel==1) return sleep_setup(stream, filename);
+
+    if(kernel==2) return matMul_setup(stream, filename);
+
+    return (void *) 1;
 }
 
-void putStream(record *r){
-    //bool waiting = true;
-    //while(waiting)
-    //{
-        pthread_mutex_lock(&queueLock);
-        //waiting = IsFull(Q);
-        //if(!waiting) Enqueue(stream, Q);
-        Enqueue(r, Q);    //extra line
-        pthread_mutex_unlock(&queueLock);
-        //if(waiting) pthread_yield();
-    //}
-}
-
-void *waitOnStream( void *arg )
+//This method will launch the given kernel in stream with setupResults.
+void kernel_call(int kernel, cudaStream_t stream, void *setupResults)
 {
-  //    cudaStream_t stream = (cudaStream_t) arg;
-    record *r = (record *) arg;
+    if(kernel==1) sleep(stream, setupResults);
 
-    // cudaEvent_t event;
-    // cudaEventCreate(&event); 
-    // cudaEventRecord(event, stream);
-    // cudaEventSynchronize(event);
-    // cudaEventDestroy(event);
-    
-    //cudaStreamSynchronize(r->stream);
-
-    double time = getTime_msec();
-    while(cudaSuccess!=cudaStreamQuery(r->stream)){
-        //while(getTime_msec()<time+500);
-    }
-
-    printf(" done waiting for kernel at %.4f ms in stream: %d\n",getTime_msec() - startTime_ms, r->index);
-
-    putStream(r);
-
-    return 0;
+    if(kernel==2) matrixMul(stream, setupResults);
 }
 
-char* getNextKernel()
+//This method will let the kernel deallocate all the memory that it acquired in
+//  kernel_setup and also lets the kernel write to its output file.
+void kernel_finish(int kernel, char * filename, void *setupResult )
 {
-    return "sleep";
+    if(kernel==1) sleep_finish(filename, setupResult);
+
+    if(kernel==2) matMul_finish(filename, setupResult);
 }
 
-void call(char *kernel)
-{
-    if(kernel=="sleep")
-    {
-        record *r = getStream();
-        printf("   main at time %.2f ms in stream: %d\n", getTime_msec()-startTime_ms, r->index);
-        pthread_t manager;
-        sleep(r->stream, kernel_time);
-        pthread_create( &manager, NULL, waitOnStream, (void *) r);
-    }
-}
 
+//prints the most recent error that hasn't been printed before
+//does nothing if there are no errors
 void printAnyErrors()
 {
     cudaError e = cudaGetLastError();
@@ -117,8 +60,6 @@ void printAnyErrors()
         printf("CUDA Error: %s\n", cudaGetErrorString( e ) );
     }
 }
-
-
 
 ////////////////////////////////////////////////////////////////////
 // The Main
@@ -128,85 +69,100 @@ int main(int argc, char **argv)
 {
     startTime_ms = getTime_msec();
 
-    pthread_mutex_init(&queueLock, NULL);
-
-    int throttle = 16;  //this should be set using device properties
-
+    //sets the throttle and number of jobs based on inputs or defaults
+    int throttle = 16;
     int jobs = 64;
-
-    Q = CreateQueue(throttle);
-
-    if( argc>3 ){
+    if( argc>2 ){
         throttle = atoi(argv[1]);
         jobs = atoi(argv[2]);
-        kernel_time = atoi(argv[3]);
-    }    
-
-    cudaStream_t *streams = (cudaStream_t *) malloc(throttle*sizeof(cudaStream_t));
-
-    // create record array
-    record **recordArray = (record **) malloc(throttle*sizeof(record *));
-
-
-    for(int i = 0; i < throttle; i++)
-    {
-      // create a new record with the cuda stream create and the loop counter as the index
-      cudaStreamCreate(&streams[i]);
-      // allocate the record
-      record *r = (record *) malloc (sizeof(struct record));
-      r->stream = streams[i];
-      r->index = i;
-      Enqueue(r, Q);
-      recordArray[i] = r;
     }
 
-    char *kernel = "none";
+    daemon_init(jobs);
+    pthread_t daemon;
+    pthread_create(&daemon, NULL, daemon_Main, (void *) &jobs );
 
-    printf("starting\n");
+    printf("The number of jobs is equal to: %d\n", jobs);
+
+    //make throttle many streams to run concurrent kernels in
+    cudaStream_t *streams = (cudaStream_t *) malloc(throttle*sizeof(cudaStream_t));
+    for(int i = 0; i < throttle; i++)
+	cudaStreamCreate(&streams[i]);
+
+    int batchNum = 0;
+
+    // loop for number of batches
+    for(int k = 0; k<jobs;)
+    {
+        int batchSize = 0; //this will be throttle or less if we run out of jobs
+
+	// arrays for kernel type and its input/output files
+	int *kernels = (int *) malloc(throttle*sizeof(int));
+	char **inputFiles = (char **) malloc(throttle*sizeof(char *));
+	char **outputFiles = (char **) malloc(throttle*sizeof(char *));
+
+        // get information for throttle many jobs or until we are out of jobs
+	for(int q=0; q<throttle && k<jobs; q++){
+	    kernels[q] = daemon_GetNextKernel();
+	    inputFiles[q] = daemon_GetInputFile();
+            outputFiles[q] = daemon_GetOutputFile();
+
+	    printf("Kernel information for kernel  %d  of batch number  %d\n", q, batchNum);
+	    printf("kernel: %d\n", kernels[q]);
+	    printf("input:  %s\n", inputFiles[q]);
+	    printf("output: %s\n\n", outputFiles[q]);
+
+            k++;
+            batchSize++;
+	}
+
+	// An array containing the state that each kernel needs
+	void **setupResults = (void **) malloc(throttle*sizeof(void *));
+
+	// Let each kernel read its input file and fill its setupResult
+	for(int q=0; q<batchSize; q++){
+	    setupResults[q] = kernel_setup(kernels[q], streams[q], inputFiles[q]);
+	}
+
+	// call each kernel in a different stream giving it its setupResult
+        for(int q=0; q<batchSize; q++){
+            kernel_call(kernels[q], streams[q], setupResults[q]);
+        }
+
+	// wait for all kernels to finish
+        cudaError err = cudaDeviceSynchronize();
+	printf("batch finished kernels with error: %s\n", cudaGetErrorString( err ) );
+
+	// let each kernel copy its results back and write to its output file
+	// they should do there own clean up (i.e. memory deallocate and closing files)
+	for(int q=0; q<batchSize; q++){
+	    kernel_finish(kernels[q], outputFiles[q], setupResults[q]);
+	}
+
+	//free the arrays that we used;
+	free(kernels);
+	free(inputFiles);
+	free(outputFiles);
+
+	printf("finished batch number: %d\n", batchNum);
+
+        batchNum++;
+    }
+
+    cudaError err = cudaDeviceSynchronize();
+    printf("finished all jobs: %s\n", cudaGetErrorString( err ) );
+    // release resources
 
     printf("The number of jobs equals: %d\n",jobs);
     printf("The current throttle is: %d\n", throttle);
-    int est = (jobs/throttle)*kernel_time;
-    printf("The estimated time should be: %d\n\n",est);
-
-    for(int k = 0; k<jobs; k++) //later will probably just be true.
-    {
-        //while( kernel == "none" ){
-        //    kernel = getNextKernel();
-        //}
-        kernel = "sleep";
-        call(kernel);
-        kernel = "none";
-    }
-                                                                                                                                                        
-    
-
-    cudaError cuda_error = cudaDeviceSynchronize();
-    if(cuda_error==cudaSuccess){
-        //printf( "Final: Running the Scheduler was a success\n");
-    }else{
-        printf("Final: CUDA Error: %s\n", cudaGetErrorString(cuda_error));
-        return 1;
-    }
-    // release resources
 
     for(int i =0; i<throttle; i++) cudaStreamDestroy(streams[i]);
 
-    // free each element of the array
-    for(int i = 0; i<throttle; i++)
-    {
-        free(recordArray[i]);
-    }
-    free(recordArray);
-
+    daemon_free();
     free(streams);
-    DisposeQueue(Q);
-    
-    for(int i=0; i<100000; i++);
-    
-    pthread_mutex_destroy(&queueLock);
+
     return 0;    
 }
+
 
 
 

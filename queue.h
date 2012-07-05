@@ -12,13 +12,8 @@
 #define Error(Str) FatalError(Str)
 #define FatalError(Str) fprintf(stderr, "%s\n", Str), exit(1)
 
-struct record{
-  cudaStream_t stream;
-  int index;
-};
-
 //typedef cudaStream_t ElementType;
-typedef record* ElementType;
+typedef void* ElementType;
 
 #ifndef _Queue_h
 

@@ -1,7 +1,0 @@
-#! /bin/bash
-sideLength=320
-
-for i in {1..64}
-do
-  ./gen $sideLength "Inputs/matrixIn${i}.txt"
-done

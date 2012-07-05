@@ -1,0 +1,47 @@
+
+
+
+TODO :: Make a daemon component using daemon.c:
+		-needs to manage a queue of all kernel requests
+		-needs to manage a queue of their corresponding parameters (file names)
+		-interacts with the rest of the program through getNextKernel() and getKernelParam()
+		-runs as a seperate thread
+
+	Make for matrixMul_kernel.cu:
+		-struct type matMulRecord (used for parameter passing)
+
+		-matMul_setup(cudaStream s, char *filename, void *setupResults);
+			*setupResults == matMulRecord( float *h_arrayA, float *d_arrayA, float *d_result )
+		 This allocates host memory for h_arrayA
+                   then copies filename's contents into h_arrayA
+                   then allocates device memory for d_arrayA and d_result
+                   then copies h_arrayA into d_arrayA using stream s
+                 (all arrays are returned to be deconstructed later)
+
+		-change cpu function that launches kernel to take void *setupResults
+
+		-matMul_finish(char *filename, void *setupResults);
+			*setupResults == matMulRecord( float *h_arrayA, float *d_arrayA, float *d_result )
+		 This allocates an intermediate host array, h_results,
+		   then copies results from d_results to h_results
+                   then writes h_results to filename
+                   then deallocates all arrays
+
+	Make for sleep_kernel.cu:
+		-sleep_setup(cudaStream s, char *filename, void *results);
+			*results == int sleep_time
+		 This reads a sleep time from filename and puts a pointer
+			to it in results
+
+		-change cpu function that launches kernel to take void *setupResults
+
+
+		-sleep_finish(char *filename, void *results);
+			*results == int sleep_time
+		 This will write the sleep_time to filename
+
+	Make for Scheduler.cu:
+		Simplify the loop that launches each batch of jobs.
+
+		This should make some arrays to manage all the information about the jobs in the batch
+		    but then the work should be done by setup, call, and deconstruct methods 

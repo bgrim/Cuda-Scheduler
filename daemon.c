@@ -104,19 +104,20 @@ void *daemon_Main(void *numOfJobs)
   for(int i=0; i<(*jobs); i++){
     pthread_mutex_lock(&queueLock);
 
-    //Currently hardcoded
+
+
+    //Currently these three values are hardcoded. Evntually the daemon will
+    //  interact with swift or a similar program to determine what to run.
+    //These will be deallocated in Scheduler.cu.
     int *kernelType = (int *) malloc(sizeof(int));
     *kernelType = 2;
 
-
-    //char buffer[maxFilenameLength];
     char *fileIn = (char *) malloc(sizeof(char)*(max+1));
     sprintf(fileIn, "Inputs/matrixIn%d.txt", i);
-    //sprintf(fileIn, "Inputs/matrixIn.txt");
 
     char *fileOut = (char *) malloc(sizeof(char)*(max+1));
     sprintf(fileOut, "Outputs/matrixOut%d.txt", i);
-    //sprintf(fileOut, "Outputs/matrixOut.txt");
+
 
     Enqueue((void *) kernelType, kernelTypes);
     Enqueue((void *) fileIn, inputFiles); //could make the file name depend on i

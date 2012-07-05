@@ -138,6 +138,13 @@ int main(int argc, char **argv)
 	    kernel_finish(kernels[q], outputFiles[q], setupResults[q]);
 	}
 
+
+	//these values were allocated by the daemon but need to be deallocated
+	for(int q=0;q<batchSize;q++){
+	    free(inputFiles[q]);
+	    free(outputFiles[q]);
+	}
+
 	//free the arrays that we used;
 	free(kernels);
 	free(inputFiles);

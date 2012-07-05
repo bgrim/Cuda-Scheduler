@@ -1,6 +1,7 @@
 //============================================
 #include<stdio.h>
 #include<stdlib.h>
+#include<string.h>
 
 //#define ROW 5
 //#define COLUMN 5
@@ -32,14 +33,22 @@ void writeMatrixtoFile(int row, int column, char *filename)
 {
   FILE *matrix=fopen(filename, "w");
   int a=0, b=0;
+
+  char *buffer = (char *) malloc(row*column*sizeof(char)*9 + column);
+
+  char *temp;
   for(a=0;a<row;a++)     
     {
       for(b=0;b<column;b++)  
         {              
-	  fprintf(matrix, "%f\t", ((float)rand())/((float) RAND_MAX) );
+	  sprintf(temp, "%f\t", ((float)rand())/((float) RAND_MAX) );
+          strcat(buffer, temp);
         }
-      fprintf(matrix, "\n");
-    } 
-      
+      strcat(buffer, "\n");
+      fprintf(matrix, buffer);
+      buffer ="";
+    }
+
+  free(buffer);
   fclose(matrix);
 }

@@ -46,7 +46,7 @@ void sleep(cudaStream_t stream, void *setupResult)
     clock_block<<<1,1,1,stream>>>(*kernel_time, clockRate);
 }
 
-void sleep_finish(char *filename, void *setupResult)
+void sleep_finish(cudaStream_t s, char *filename, void *setupResult)
 {
     // opens the output file
     int *kernel_time = (int *) setupResult;

@@ -1,5 +1,5 @@
-#! /bin/bash                                                                                                                                                                       
-throttle=1
+#! /bin/bash             
+throttle=2
 jobs=32
 # do the overall test, this many times
 for i in {1..1}

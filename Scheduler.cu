@@ -4,6 +4,7 @@
 #include "matrixMul_kernel.cu"
 #include "sleep_kernel.cu"
 #include "daemon.c"
+#include "cleaner.cu"
 #include <pthread.h>
 
 /////////////////////////////////////////////////////////////////
@@ -41,15 +42,6 @@ void kernel_call(int kernel, cudaStream_t stream, void *setupResults)
     if(kernel==2) matrixMul(stream, setupResults);
 }
 
-//This method will let the kernel deallocate all the memory that it acquired in
-//  kernel_setup and also lets the kernel write to its output file.
-void kernel_finish(int kernel, char * filename, void *setupResult )
-{
-    if(kernel==1) sleep_finish(filename, setupResult);
-
-    if(kernel==2) matMul_finish(filename, setupResult);
-}
-
 
 //prints the most recent error that hasn't been printed before
 //does nothing if there are no errors
@@ -84,9 +76,6 @@ int main(int argc, char **argv)
     printf("The number of jobs is equal to: %d\n", jobs);
 
     //make throttle many streams to run concurrent kernels in
-    cudaStream_t *streams = (cudaStream_t *) malloc(throttle*sizeof(cudaStream_t));
-    for(int i = 0; i < throttle; i++)
-	cudaStreamCreate(&streams[i]);
 
     int batchNum = 0;
 
@@ -114,6 +103,10 @@ int main(int argc, char **argv)
             k++;
             batchSize++;
 	}
+        //allocate a stream for each kernel
+        cudaStream_t *streams = (cudaStream_t *) malloc(batchSize*sizeof(cudaStream_t));
+        for(int i = 0; i < batchSize; i++)
+	    cudaStreamCreate(&streams[i]);
 
 	// An array containing the state that each kernel needs
 	void **setupResults = (void **) malloc(throttle*sizeof(void *));
@@ -129,43 +122,27 @@ int main(int argc, char **argv)
         }
 
 	// wait for all kernels to finish
-        cudaError err = cudaDeviceSynchronize();
-	printf("kernels finished kernels with error: %s\n", cudaGetErrorString( err ) );
+        cudaError e = cudaDeviceSynchronize();
+	printf("finished batch number: %d  with error: %s\n\n",batchNum,cudaGetErrorString(e));
 
-	// let each kernel copy its results back and write to its output file
-	// they should do there own clean up (i.e. memory deallocate and closing files)
-	for(int q=0; q<batchSize; q++){
-	    kernel_finish(kernels[q], outputFiles[q], setupResults[q]);
-	}
+        pthread_t cleaner;
 
+        CleanerRecord *params = makeCleanerRecord(batchSize, streams, inputFiles, 
+                                                    outputFiles, kernels, setupResults);
 
-	//these values were allocated by the daemon but need to be deallocated
-	for(int q=0;q<batchSize;q++){
-	    free(inputFiles[q]);
-	    free(outputFiles[q]);
-	}
-
-	//free the arrays that we used;
-	free(kernels);
-	free(inputFiles);
-	free(outputFiles);
-
-	printf("finished batch number: %d\n\n", batchNum);
+        pthread_create(&cleaner, NULL, cleaner_Main, (void *) params );
 
         batchNum++;
     }
 
     cudaError err = cudaDeviceSynchronize();
-    printf("finished all jobs with error: %s\n\n", cudaGetErrorString( err ) );
+    printf("finished all jobs and cleaner with error: %s\n\n", cudaGetErrorString( err ) );
     // release resources
 
     printf("The number of jobs equals: %d\n",jobs);
     printf("The current throttle is: %d\n", throttle);
 
-    for(int i =0; i<throttle; i++) cudaStreamDestroy(streams[i]);
-
     daemon_free();
-    free(streams);
 
     return 0;    
 }

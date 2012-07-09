@@ -173,7 +173,7 @@ void matrixMul(cudaStream_t s, void *setupResults){
   cudaMatrixMul<32><<< grid, threads, 0, s>>>(d_results, d_arrayA, d_arrayA, side_length, side_length);
 }
 
-void matMul_finish(char *filename, void *setupResults){
+void matMul_finish(cudaStream_t s, char *filename, void *setupResults){
   matMulRecord *r = (matMulRecord *) setupResults;
 
   float *h_arrayA = r->h_arrayA;
@@ -185,7 +185,7 @@ void matMul_finish(char *filename, void *setupResults){
   float* h_results = (float*)malloc(side_length*side_length*sizeof(float));
 
   // then copies results from d_results to h_results
-  cudaMemcpy(h_results, d_results, side_length*side_length*sizeof(float), cudaMemcpyDeviceToHost);
+  cudaMemcpyAsync(h_results, d_results, side_length*side_length*sizeof(float), cudaMemcpyDeviceToHost, s);
 
   // then deallocates all arrays
   cudaFree(d_results);

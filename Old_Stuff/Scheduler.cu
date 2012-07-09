@@ -16,8 +16,8 @@
 
 int kernel_time = 1000;
 
-struct timeval tp;
-
+//struct timeval tp;
+int * result;
 double startTime_ms;
 
 Queue Q;
@@ -79,14 +79,14 @@ void *waitOnStream( void *arg )
     // cudaEventSynchronize(event);
     // cudaEventDestroy(event);
     
-    //cudaStreamSynchronize(r->stream);
+    cudaStreamSynchronize(r->stream);
 
-    double time = getTime_msec();
-    while(cudaSuccess!=cudaStreamQuery(r->stream)){
+    //    double time = getTime_msec();
+    //while(cudaSuccess!=cudaStreamQuery(r->stream)){
         //while(getTime_msec()<time+500);
-    }
+    //}
 
-    printf(" done waiting for kernel at %.4f ms in stream: %d\n",getTime_msec() - startTime_ms, r->index);
+    //printf(" done waiting for kernel at %.4f ms in stream: %d\n",getTime_msec() - startTime_ms, r->index);
 
     putStream(r);
 
@@ -103,7 +103,7 @@ void call(char *kernel)
     if(kernel=="sleep")
     {
         record *r = getStream();
-        printf("   main at time %.2f ms in stream: %d\n", getTime_msec()-startTime_ms, r->index);
+	//  printf("   main at time %.2f ms in stream: %d\n", getTime_msec()-startTime_ms, r->index);
         pthread_t manager;
         sleep(r->stream, kernel_time);
         pthread_create( &manager, NULL, waitOnStream, (void *) r);

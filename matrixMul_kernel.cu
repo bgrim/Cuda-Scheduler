@@ -1,3 +1,6 @@
+#include <stdio.h>
+#include <stdlib.h>
+
 //declare globals and structs and headers
 struct timeval tp;
 double getTime_sec();

@@ -1,8 +1,12 @@
 #include <stdio.h>
 #include <cuda_runtime.h>
 #include <sys/time.h>
+
 #include "matrixMul_kernel.cu"
 #include "sleep_kernel.cu"
+#include "matrixMul_cpu.c"
+#include "sleep_cpu.c"
+
 #include "daemon.c"
 #include "cleaner.cu"
 #include <pthread.h>
@@ -30,6 +34,10 @@ void *kernel_setup(int kernel, cudaStream_t stream, char * filename)
     if(kernel==1) return sleep_setup(stream, filename);
 
     if(kernel==2) return matMul_setup(stream, filename);
+    
+    if(kernel==3) return sleep_cpu(filename);
+
+    if(kernel==4) return matMul_cpu(filename);
 
     return (void *) 1;
 }

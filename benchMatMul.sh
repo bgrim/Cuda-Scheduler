@@ -33,7 +33,7 @@ matrixSize=1376
         done
 
 	# run the matrix multiply
-	(/usr/bin/time -f "%e" ./run $throttle $jobs) 2>> logs/log$i.txt
+	#(/usr/bin/time -f "%e" ./run $throttle $jobs) 2>> logs/log$i.txt
 
 	# double the matrix size
 	matrixSize=$(($matrixSize+1376))    

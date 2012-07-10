@@ -21,11 +21,15 @@ void *sleep_setup(cudaStream_t stream, char *filename)
     FILE * ftp;
     ftp = fopen(filename,"r");
 
+    printf("starting setup with %s\n", filename);
+
     // read the kernel_time from the file
     int *kernel_time = (int *) malloc(sizeof(int));
     fscanf(ftp, "%d", kernel_time);
 
     fclose(ftp);
+
+    printf("done with setup of %s\n", filename);
 
     return (void *) kernel_time;
 }

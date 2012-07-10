@@ -81,6 +81,9 @@ int main(int argc, char **argv)
     pthread_t daemon;
     pthread_create(&daemon, NULL, daemon_Main, (void *) &jobs );
 
+    pthread_mutex_t cleanerLock;
+    pthread_mutex_init(&cleanerLock, NULL);
+
     printf("The number of jobs is equal to: %d\n", jobs);
 
     //make throttle many streams to run concurrent kernels in
@@ -124,10 +127,14 @@ int main(int argc, char **argv)
 	    setupResults[q] = kernel_setup(kernels[q], streams[q], inputFiles[q]);
 	}
 
+        pthread_mutex_lock(&cleanerLock);
+
 	// call each kernel in a different stream giving it its setupResult
         for(int q=0; q<batchSize; q++){
             kernel_call(kernels[q], streams[q], setupResults[q]);
         }
+
+        pthread_mutex_unlock(&cleanerLock);
 
 	// wait for all kernels to finish
         cudaError e = cudaDeviceSynchronize();
@@ -136,7 +143,7 @@ int main(int argc, char **argv)
         pthread_t cleaner;
 
         CleanerRecord *params = makeCleanerRecord(batchSize, streams, inputFiles, 
-                                                    outputFiles, kernels, setupResults);
+                                                    outputFiles, kernels, setupResults, cleanerLock);
 
         pthread_create(&cleaner, NULL, cleaner_Main, (void *) params );
 
@@ -151,6 +158,8 @@ int main(int argc, char **argv)
     printf("The current throttle is: %d\n", throttle);
 
     daemon_free();
+
+    pthread_mutex_destroy(&cleanerLock);
 
     return 0;    
 }

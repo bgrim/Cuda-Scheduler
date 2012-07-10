@@ -1,3 +1,5 @@
+#include <pthread.h>
+
 //This method will let the kernel deallocate all the memory that it acquired in
 //  kernel_setup and also lets the kernel write to its output file.
 void kernel_finish(int kernel, cudaStream_t stream, char * filename, void *setupResult )
@@ -16,10 +18,11 @@ struct CleanerRecord
     char **OutputFiles;
     int *Kernels;
     void **SetupResults;
+    pthread_mutex_t Lock;
 };
 
 CleanerRecord *makeCleanerRecord(int batchSize, cudaStream_t *streams, char **inputFiles, 
-                                    char **outputFiles, int *kernels, void **setupResults)
+                                    char **outputFiles, int *kernels, void **setupResults, pthread_mutex_t lock)
 {
     CleanerRecord *r = (CleanerRecord *) malloc (sizeof(struct CleanerRecord));
     r->BatchSize = batchSize;
@@ -28,6 +31,7 @@ CleanerRecord *makeCleanerRecord(int batchSize, cudaStream_t *streams, char **in
     r->OutputFiles = outputFiles;
     r->Kernels = kernels;
     r->SetupResults = setupResults;
+    r->Lock = lock;
     return r;
 }
 
@@ -49,6 +53,9 @@ void *cleaner_Main(void *params)
     char **outputFiles = r->OutputFiles;
     int *kernels = r->Kernels;
     void **setupResults = r->SetupResults;
+    pthread_mutex_t lock = r->Lock;
+
+    pthread_mutex_lock(&lock);
 
 //call kernel_finish for each kernel
     for(int q=0; q<batchSize; q++){
@@ -65,6 +72,7 @@ void *cleaner_Main(void *params)
         free(outputFiles[q]);
         cudaStreamDestroy(streams[q]);
     }
+    pthread_mutex_unlock(&lock);
 	//free the arrays that we used;
     free(streams);
     free(kernels);

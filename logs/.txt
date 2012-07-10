@@ -1,0 +1,116 @@
+Throttle count equals:  1
+The number of jobs is:  1
+The matrix size is   :  1376
+
+real	0m0.246s
+user	0m0.100s
+sys	0m0.160s
+Throttle count equals:  1
+The number of jobs is:  1
+The matrix size is   :  2752
+
+real	0m0.527s
+user	0m0.350s
+sys	0m0.200s
+Throttle count equals:  1
+The number of jobs is:  1
+The matrix size is   :  4128
+
+real	0m1.097s
+user	0m0.920s
+sys	0m0.200s
+Throttle count equals:  1
+The number of jobs is:  1
+The matrix size is   :  5504
+
+real	0m2.145s
+user	0m1.940s
+sys	0m0.220s
+Throttle count equals:  1
+The number of jobs is:  1
+The matrix size is   :  6880
+
+real	0m3.778s
+user	0m3.460s
+sys	0m0.340s
+Throttle count equals:  1
+The number of jobs is:  1
+The matrix size is   :  8256
+
+real	0m6.074s
+user	0m5.720s
+sys	0m0.360s
+Throttle count equals:  1
+The number of jobs is:  1
+The matrix size is   :  9632
+
+real	0m9.127s
+user	0m8.820s
+sys	0m0.330s
+Throttle count equals:  1
+The number of jobs is:  1
+The matrix size is   :  11008
+
+real	0m13.197s
+user	0m12.830s
+sys	0m0.360s
+0.15
+0.12
+0.14
+0.13
+0.16
+0.14
+0.15
+0.16
+0.21
+0.21
+0.22
+0.24
+0.30
+0.29
+0.30
+0.35
+0.38
+0.41
+0.45
+0.48
+0.50
+0.53
+0.58
+0.63
+0.69
+0.75
+0.82
+0.85
+0.92
+1.00
+1.05
+1.11
+1.18
+1.25
+1.37
+1.40
+1.51
+1.57
+1.70
+1.76
+1.89
+1.98
+2.10
+Command terminated by signal 11
+10.28
+29.51
+Command terminated by signal 2
+36.97
+Command terminated by signal 2
+3.90
+Command terminated by signal 2
+0.14
+Command terminated by signal 2
+0.02
+Command terminated by signal 2
+0.54
+Command terminated by signal 2
+0.17
+Command terminated by signal 2
+0.10

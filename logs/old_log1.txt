@@ -1,0 +1,79 @@
+0.17
+0.20
+0.35
+0.66
+1.11
+1.84
+2.82
+4.39
+5.82
+8.19
+10.51
+14.27
+17.28
+22.49
+26.53
+41.61
+38.82
+47.20
+54.63
+64.48
+73.41
+84.91
+98.20
+149.89
+135.17
+156.80
+181.84
+Command terminated by signal 2
+192.73
+Command terminated by signal 2
+1.33
+Command terminated by signal 2
+0.15
+Command terminated by signal 2
+0.11
+Command terminated by signal 2
+0.11
+Command terminated by signal 2
+0.10
+Command terminated by signal 2
+0.08
+Command terminated by signal 2
+0.11
+Command terminated by signal 2
+0.11
+Command terminated by signal 2
+0.08
+Command terminated by signal 2
+0.16
+Command terminated by signal 2
+0.13
+Command terminated by signal 2
+0.16
+Command terminated by signal 2
+0.14
+Command terminated by signal 2
+0.14
+Command terminated by signal 2
+0.11
+Command terminated by signal 2
+0.15
+Command terminated by signal 2
+0.12
+Command terminated by signal 2
+0.17
+Command terminated by signal 2
+0.14
+Command terminated by signal 2
+0.15
+Command terminated by signal 2
+0.17
+Command terminated by signal 2
+0.15
+Command terminated by signal 2
+0.10
+Command terminated by signal 2
+0.10
+Command terminated by signal 2
+0.14

@@ -108,17 +108,17 @@ void *daemon_Main(void *numOfJobs)
     //  interact with swift or a similar program to determine what to run.
     //These will be deallocated in Scheduler.cu.
     int *kernelType = (int *) malloc(sizeof(int));
-    *kernelType = 2;
+    *kernelType = 1;
 
     char *fileIn = (char *) malloc(sizeof(char)*(max+1));
     // sprintf(fileIn, "Inputs/matrixIn%d.txt", i);
     // sprintf(fileIn, "/dev/shm/Inputs/matrixIn%d.txt", i);
-    sprintf(fileIn, "Inputs/matrixIn%d.txt", i);
+    sprintf(fileIn, "Inputs/sleepIn%d.txt", i);
 
     char *fileOut = (char *) malloc(sizeof(char)*(max+1));
     // sprintf(fileOut, "Outputs/matrixOut%d.txt", i);
     // sprintf(fileOut, "/dev/shm/Outputs/matrixOut%d.txt", i);
-    sprintf(fileOut, "Outputs/matrixOut%d.txt", i);
+    sprintf(fileOut, "Outputs/sleepOut%d.txt", i);
 
     Enqueue((void *) kernelType, kernelTypes);
     Enqueue((void *) fileIn, inputFiles); //could make the file name depend on i

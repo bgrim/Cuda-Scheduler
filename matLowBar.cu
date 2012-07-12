@@ -7,8 +7,9 @@
 int main(){
   cudaStream_t s;
 
+  cudaStreamCreate(&s);
+
   char *fileIn = "Inputs/matrixIn0.txt";;
-  //  sprintf(fileIn, "Inputs/matrixIn0.txt", i);
 
   void* setupResults = matMul_setup(s, fileIn);
   matrixMul(s, setupResults);
@@ -17,6 +18,7 @@ int main(){
   //sync stream
   cudaStreamSynchronize(s);
 
+  // destroy stream
   cudaStreamDestroy(s);
   
   return 0;

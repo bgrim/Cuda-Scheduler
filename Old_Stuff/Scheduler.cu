@@ -167,7 +167,7 @@ int main(int argc, char **argv)
     printf("The number of jobs equals: %d\n",jobs);
     printf("The current throttle is: %d\n", throttle);
     int est = (jobs/throttle)*kernel_time;
-    printf("The estimated time should be: %d\n\n",est);
+    printf("The estimated time is be: %d\n\n",est);
 
     for(int k = 0; k<jobs; k++) //later will probably just be true.
     {
